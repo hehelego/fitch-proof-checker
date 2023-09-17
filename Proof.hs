@@ -2,6 +2,13 @@ module Proof where
 
 import Prop (Prop)
 
+-- These notations come from section 1.2.3 of the book `Logic in Computer Science`
+-- @book{huth2004logic,
+--   title={Logic in Computer Science: Modelling and reasoning about systems},
+--   author={Huth, Michael and Ryan, Mark},
+--   year={2004},
+--   publisher={Cambridge university press}
+-- }
 data Rule
   = Premise -- use premise
   | Assumption -- use assumption
@@ -18,7 +25,7 @@ data Rule
   | NegNegE StepRef -- double negation elimination
   deriving (Show, Eq, Ord)
 
-newtype StepRef = StepRef Int deriving (Show, Eq, Ord)
+type StepRef = Int
 
 data Step
   = MakeAssumption Prop Prop [Step]

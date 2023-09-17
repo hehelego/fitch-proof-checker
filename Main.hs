@@ -8,30 +8,30 @@ import Prop
 
 -- (p -> q) |- (r or p) -> (r or q)
 pf =
-  Proof
-    { pfPremises = [p `Impl` q],
-      pfSteps =
-        [ MakeAssumption
-            (r `Or` p)
-            (r `Or` q)
+    Proof
+        { pfPremises = [p `Impl` q]
+        , pfSteps =
             [ MakeAssumption
-                r
                 (r `Or` p)
-                [ ApplyRule r Assumption,
-                  ApplyRule (r `Or` p) (DisjI (StepRef 0))
-                ],
-              MakeAssumption
-                p
                 (r `Or` q)
-                [ ApplyRule p Assumption,
-                  ApplyRule (p `Impl` q) Premise,
-                  ApplyRule q (ImplE (StepRef 0) (StepRef 1)),
-                  ApplyRule (r `Or` q) (DisjI (StepRef 2))
+                [ MakeAssumption
+                    r
+                    (r `Or` p)
+                    [ ApplyRule r Assumption
+                    , ApplyRule (r `Or` p) (DisjI 0)
+                    ]
+                , MakeAssumption
+                    p
+                    (r `Or` q)
+                    [ ApplyRule p Assumption
+                    , ApplyRule (p `Impl` q) Premise
+                    , ApplyRule q (ImplE 0 1)
+                    , ApplyRule (r `Or` q) (DisjI 2)
+                    ]
                 ]
-            ],
-          ApplyRule ((r `Or` p) `Impl` (r `Or` q)) (ImplI (StepRef 0))
-        ]
-    }
+            , ApplyRule ((r `Or` p) `Impl` (r `Or` q)) (ImplI 0)
+            ]
+        }
 
 main :: IO ()
 main = print $ checkProof pf

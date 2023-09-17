@@ -19,13 +19,13 @@ initChecker :: Checker
 initChecker = Checker {premises = [], assumptions = [], checkedSteps = [], valid = True}
 
 ckFindProp :: CheckedSteps -> StepRef -> (Prop -> Bool) -> Bool
-ckFindProp ck (StepRef i) cond = (i < length ck) && (case ck !! i of ValidProp p -> cond p; _ -> False)
+ckFindProp ck i cond = (i < length ck) && (case ck !! i of ValidProp p -> cond p; _ -> False)
 
 ckFindDerv :: CheckedSteps -> StepRef -> (Prop -> Prop -> Bool) -> Bool
-ckFindDerv ck (StepRef i) cond = (i < length ck) && (case ck !! i of AsumpDerv p q -> cond p q; _ -> False)
+ckFindDerv ck i cond = (i < length ck) && (case ck !! i of AsumpDerv p q -> cond p q; _ -> False)
 
 ckIndex :: CheckedSteps -> StepRef -> Maybe Checked
-ckIndex ck (StepRef i) = if i < length ck then Just (ck !! i) else Nothing
+ckIndex ck i = if i < length ck then Just (ck !! i) else Nothing
 
 checkRule :: Checker -> Prop -> Rule -> Bool
 -- use a premise
