@@ -6,7 +6,7 @@ import Proof
 import Prop (Prop (..))
 import Rule (Rule (..))
 
-data Checked = ValidProp Prop | AsumpDerv Prop Prop deriving (Eq)
+data Checked = ValidProp Prop | AsumpDerv Prop Prop deriving (Eq, Show)
 
 type CheckedSteps = [Checked]
 
@@ -109,5 +109,5 @@ stepChecker
       else checker
 
 updChecker :: Checker -> Bool -> Checked -> Checker
-updChecker checker True step = checker {checkedSteps = step : checkedSteps checker}
+updChecker checker True step = checker {checkedSteps = checkedSteps checker ++ [step]}
 updChecker checker False step = checker {valid = False}
