@@ -27,24 +27,24 @@ ckFindDerv ck (StepRef i) cond = (i < length ck) && (case ck !! i of AsumpDerv p
 ckIndex :: CheckedSteps -> StepRef -> Maybe Checked
 ckIndex ck (StepRef i) = if i < length ck then Just (ck !! i) else Nothing
 
-checkRule :: Checker -> Prop -> Rule -> [StepRef] -> Bool
+checkRule :: Checker -> Prop -> Rule -> Bool
 -- use a premise
-checkRule checker p Premise [] = p `elem` premises checker
+checkRule checker p Premise = p `elem` premises checker
 -- use an assumption
-checkRule checker p Assumption [] = p `elem` assumptions checker
+checkRule checker p Assumption = p `elem` assumptions checker
 -- conjunction introduction
-checkRule checker (p `And` q) ConjI [i, j] =
+checkRule checker (p `And` q) (ConjI i j) =
   find i (== p) && find j (== q)
   where
     find = ckFindProp $ checkedSteps checker
 -- conjunction elimination
-checkRule checker p ConjE [i] =
+checkRule checker p (ConjE i) =
   ckFindProp (checkedSteps checker) i (\case p' `And` q' -> p == p' || p == q'; _ -> False)
 -- disjunction introduction
-checkRule checker (p `Or` q) DisjI [i] =
+checkRule checker (p `Or` q) (DisjI i) =
   ckFindProp (checkedSteps checker) i (\p' -> p == p' || q == p')
 -- disjunction elimination
-checkRule checker x DisjE [i, j, k] =
+checkRule checker x (DisjE i j k) =
   case ckIndex steps i of
     Just (ValidProp (p `Or` q)) ->
       ckFindDerv steps j (\asump derived -> asump == p && derived == x)
@@ -53,36 +53,36 @@ checkRule checker x DisjE [i, j, k] =
   where
     steps = checkedSteps checker
 -- implication introduction
-checkRule checker (p `Impl` q) ImplI [i] =
+checkRule checker (p `Impl` q) (ImplI i) =
   ckFindDerv (checkedSteps checker) i (\asump derived -> asump == p && derived == q)
 -- implication elimination
-checkRule checker q ImplE [i, j] =
+checkRule checker q (ImplE i j) =
   case ckIndex steps i of
     Just (ValidProp p) -> ckFindProp steps j (\pq -> pq == p `Impl` q)
     _ -> False
   where
     steps = checkedSteps checker
 -- negation introduction
-checkRule checker (Not p) NegI [i] =
+checkRule checker (Not p) (NegI i) =
   ckFindDerv (checkedSteps checker) i (\asump derived -> asump == p && derived == Bottom)
 -- negation elimination
-checkRule checker Bottom NegE [i, j] =
+checkRule checker Bottom (NegE i j) =
   case ckIndex steps i of
     Just (ValidProp p) -> ckFindProp steps j (== Not p)
     _ -> False
   where
     steps = checkedSteps checker
 -- bottom elimination
-checkRule checker _ BotE [i] =
+checkRule checker _ (BotE i) =
   ckFindProp (checkedSteps checker) i (== Bottom)
 -- double negation introduction
-checkRule checker (Not (Not p)) NegNegI [i] =
+checkRule checker (Not (Not p)) (NegNegI i) =
   ckFindProp (checkedSteps checker) i (== p)
 -- double negation elimination
-checkRule checker p NegNegI [i] =
+checkRule checker p (NegNegE i) =
   ckFindProp (checkedSteps checker) i (== Not (Not p))
 -- not a valid application of existing rules
-checkRule _ _ _ _ = False
+checkRule _ _ _ = False
 
 checkProof :: Proof -> Bool
 checkProof (Proof premises steps) = valid $ runChecker initChecker {premises = premises} steps
@@ -103,7 +103,7 @@ stepChecker
         MakeAssumption asump concl subSteps ->
           let checkSub = runChecker checker {assumptions = asump : _assumptions, checkedSteps = []} subSteps
            in updChecker checker (valid checkSub) (AsumpDerv asump concl)
-        ApplyRule prop rule ops -> let v = checkRule checker prop rule ops in updChecker checker v (ValidProp prop)
+        ApplyRule prop rule -> let v = checkRule checker prop rule in updChecker checker v (ValidProp prop)
       else checker
 
 updChecker :: Checker -> Bool -> Checked -> Checker

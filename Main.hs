@@ -17,19 +17,19 @@ pf =
             [ MakeAssumption
                 r
                 (r `Or` p)
-                [ ApplyRule r Assumption [],
-                  ApplyRule (r `Or` p) DisjI [StepRef 0]
+                [ ApplyRule r Assumption,
+                  ApplyRule (r `Or` p) (DisjI (StepRef 0))
                 ],
               MakeAssumption
                 p
                 (r `Or` q)
-                [ ApplyRule p Assumption [],
-                  ApplyRule (p `Impl` q) Premise [],
-                  ApplyRule q ImplE [StepRef 0, StepRef 1],
-                  ApplyRule (r `Or` q) DisjI [StepRef 2]
+                [ ApplyRule p Assumption,
+                  ApplyRule (p `Impl` q) Premise,
+                  ApplyRule q (ImplE (StepRef 0) (StepRef 1)),
+                  ApplyRule (r `Or` q) (DisjI (StepRef 2))
                 ]
             ],
-          ApplyRule ((r `Or` p) `Impl` (r `Or` q)) ImplI [StepRef 0]
+          ApplyRule ((r `Or` p) `Impl` (r `Or` q)) (ImplI (StepRef 0))
         ]
     }
 

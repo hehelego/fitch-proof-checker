@@ -5,24 +5,24 @@ import Prop (Prop)
 data Rule
   = Premise -- use premise
   | Assumption -- use assumption
-  | ConjI -- conjunction introduction
-  | ConjE -- conjunction elimination
-  | DisjI -- disjunction introduction
-  | DisjE -- disjunction elimination
-  | ImplI -- implication introduction
-  | ImplE -- implication elimination
-  | NegI -- negation introduction
-  | NegE -- negation elimination
-  | BotE -- bottom elimination
-  | NegNegI -- double negation introduction
-  | NegNegE -- double negation elimination
+  | ConjI StepRef StepRef -- conjunction introduction
+  | ConjE StepRef -- conjunction elimination
+  | DisjI StepRef -- disjunction introduction
+  | DisjE StepRef StepRef StepRef -- disjunction elimination
+  | ImplI StepRef -- implication introduction
+  | ImplE StepRef StepRef -- implication elimination
+  | NegI StepRef -- negation introduction
+  | NegE StepRef StepRef -- negation elimination
+  | BotE StepRef -- bottom elimination
+  | NegNegI StepRef -- double negation introduction
+  | NegNegE StepRef -- double negation elimination
   deriving (Show, Eq, Ord)
 
-newtype StepRef = StepRef Int
+newtype StepRef = StepRef Int deriving (Show, Eq, Ord)
 
 data Step
   = MakeAssumption Prop Prop [Step]
-  | ApplyRule Prop Rule [StepRef]
+  | ApplyRule Prop Rule
 
 data Proof = Proof {pfPremises :: [Prop], pfSteps :: [Step]}
 
