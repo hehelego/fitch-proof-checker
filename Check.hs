@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Check where
+module Check (checkProof) where
 
 import Proof
 import Prop (Prop (..))
@@ -10,7 +10,14 @@ data Checked = ValidProp Prop | AsumpDerv Prop Prop deriving (Eq)
 
 type CheckedSteps = [Checked]
 
-data Checker = Checker {premises, assumptions :: [Prop], checkedSteps :: CheckedSteps}
+data Checker = Checker
+  { premises, assumptions :: [Prop],
+    checkedSteps :: CheckedSteps, -- checked steps in current block
+    valid :: Bool
+  }
+
+initChecker :: Checker
+initChecker = Checker {premises = [], assumptions = [], checkedSteps = [], valid = True}
 
 ckFindProp :: CheckedSteps -> StepRef -> (Prop -> Bool) -> Bool
 ckFindProp ck (StepRef i) cond = (i < length ck) && (case ck !! i of ValidProp p -> cond p; _ -> False)
@@ -77,3 +84,30 @@ checkRule checker p NegNegI [i] =
   ckFindProp (checkedSteps checker) i (== Not (Not p))
 -- not a valid application of existing rules
 checkRule _ _ _ _ = False
+
+checkProof :: Proof -> Bool
+checkProof (Proof steps) = valid $ runChecker initChecker steps
+
+runChecker :: Checker -> [Step] -> Checker
+runChecker = foldl stepChecker
+
+stepChecker :: Checker -> Step -> Checker
+stepChecker
+  checker@Checker
+    { premises = _premises,
+      assumptions = _assumptions,
+      checkedSteps = _checkedSteps
+    }
+  step =
+    if valid checker
+      then case step of
+        WithPremise prems -> checker {premises = prems ++ _premises}
+        MakeAssumption asump concl subSteps ->
+          let checkSub = runChecker checker {assumptions = asump : _assumptions, checkedSteps = []} subSteps
+           in updChecker checker (valid checkSub) (AsumpDerv asump concl)
+        ApplyRule prop rule ops -> let v = checkRule checker prop rule ops in updChecker checker v (ValidProp prop)
+      else checker
+
+updChecker :: Checker -> Bool -> Checked -> Checker
+updChecker checker True step = checker {checkedSteps = step : checkedSteps checker}
+updChecker checker False step = checker {valid = False}
