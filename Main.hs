@@ -33,7 +33,7 @@ pf =
               ApplyRule (r `Or` q) DisjI [StepRef 2]
             ]
         ],
-      ApplyRule ((r `Or` p) `Impl` (r `Or` q)) ImplI [StepRef 1]
+      ApplyRule ((r `Or` p) `Impl` (r `Or` q)) ImplI [StepRef 0]
     ]
 
 main :: IO ()
