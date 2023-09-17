@@ -3,8 +3,7 @@
 module Check (checkProof) where
 
 import Proof
-import Prop (Prop (..))
-import Rule (Rule (..))
+import Prop
 
 data Checked = ValidProp Prop | AsumpDerv Prop Prop deriving (Eq, Show)
 

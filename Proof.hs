@@ -1,13 +1,28 @@
 module Proof where
 
 import Prop (Prop)
-import Rule (Rule)
+
+data Rule
+  = Premise -- use premise
+  | Assumption -- use assumption
+  | ConjI -- conjunction introduction
+  | ConjE -- conjunction elimination
+  | DisjI -- disjunction introduction
+  | DisjE -- disjunction elimination
+  | ImplI -- implication introduction
+  | ImplE -- implication elimination
+  | NegI -- negation introduction
+  | NegE -- negation elimination
+  | BotE -- bottom elimination
+  | NegNegI -- double negation introduction
+  | NegNegE -- double negation elimination
+  deriving (Show, Eq, Ord)
 
 newtype StepRef = StepRef Int
 
 data Step
-  = MakeAssumption Prop.Prop Prop.Prop [Step]
-  | ApplyRule Prop.Prop Rule.Rule [StepRef]
+  = MakeAssumption Prop Prop [Step]
+  | ApplyRule Prop Rule [StepRef]
 
 data Proof = Proof {pfPremises :: [Prop], pfSteps :: [Step]}
 

@@ -3,13 +3,8 @@ module Main where
 import Check
 import Proof
 import Prop
-import Rule
 
-p = Atom (AtomId 1)
-
-q = Atom (AtomId 2)
-
-r = Atom (AtomId 3)
+[p, q, r, s, t, u, v, w] = Atom . AtomId <$> [1 .. 8]
 
 -- (p -> q) |- (r or p) -> (r or q)
 pf =
