@@ -86,7 +86,7 @@ checkRule checker p NegNegI [i] =
 checkRule _ _ _ _ = False
 
 checkProof :: Proof -> Bool
-checkProof (Proof steps) = valid $ runChecker initChecker steps
+checkProof (Proof premises steps) = valid $ runChecker initChecker {premises = premises} steps
 
 runChecker :: Checker -> [Step] -> Checker
 runChecker = foldl stepChecker
@@ -101,7 +101,6 @@ stepChecker
   step =
     if valid checker
       then case step of
-        WithPremise prems -> checker {premises = prems ++ _premises}
         MakeAssumption asump concl subSteps ->
           let checkSub = runChecker checker {assumptions = asump : _assumptions, checkedSteps = []} subSteps
            in updChecker checker (valid checkSub) (AsumpDerv asump concl)
