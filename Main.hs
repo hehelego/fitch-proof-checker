@@ -4,7 +4,7 @@ import Check
 import Proof
 import Prop
 
-[p, q, r, s, t, u, v, w] = Atom . AtomId <$> [1 .. 8]
+[p, q, r, s, t, u, v, w] = Atom <$> [1 .. 8]
 
 -- (p -> q) |- (r or p) -> (r or q)
 pf =
