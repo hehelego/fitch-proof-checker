@@ -2,27 +2,30 @@
 
 module Check (checkProof) where
 
+import Control.Monad.Trans.Maybe
+import Control.Monad.Writer
+import Data.List (uncons)
 import qualified Data.Map as Map
-import Data.Maybe (fromJust, isJust, isNothing)
-import qualified Data.Set as Set
-import Debug.Trace
 import Proof
 import Prop
-import qualified StackMultiSet as SMS
 
 data Knowledge
   = ValidProp Prop -- this proposition follows from the premises
   | ValidDerv Prop Prop -- this derivation is valid given the premises
-  deriving (Eq, Show)
+  deriving (Eq)
+
+instance Show Knowledge where
+  show (ValidProp p) = "Checked " ++ show p
+  show (ValidDerv p q) = "Checked " ++ show p ++ " entails " ++ show q
 
 -- knowledge base
 type KB = Map.Map StepRef Knowledge
 
 data Checker = Checker
-  { premises :: Set.Set Prop, -- the premises
-    assumptions :: SMS.StackMultiSet (Prop, Int), -- currently visible assumptions
-    stepCnt :: Int, -- current step, count `AddPremise`, `Assume`, and `ApplyRule`.
-    lastProp :: Either String Prop, -- last proposition in `AddPremise`, `Assume`, and `ApplyRule`.
+  { premises :: [Prop], -- the premises
+    assumptions :: [(Prop, Int)], -- currently visible assumptions: (assumed proposition, line number)
+    lineNum :: Int, -- current line, count `AddPremise`, `Assume`, and `ApplyRule`.
+    lastProp :: Maybe Prop, -- last proposition line `AddPremise`, `Assume`, and `ApplyRule`.
     kb :: KB -- checked steps in current state
   }
   deriving (Show)
@@ -30,10 +33,10 @@ data Checker = Checker
 initChecker :: Checker
 initChecker =
   Checker
-    { premises = Set.empty,
-      assumptions = SMS.empty,
-      stepCnt = 1,
-      lastProp = Left "last step not found",
+    { premises = [],
+      assumptions = [],
+      lineNum = 1,
+      lastProp = Nothing,
       kb = Map.empty
     }
 
@@ -60,9 +63,7 @@ checkRule checker (p `Or` q) (DisjI i) =
   kbFindProp (kb checker) i (\r -> p == r || q == r)
 -- disjunction elimination
 checkRule checker x (DisjE i j k) =
-  trace
-    (show $ kb checker)
-    findProp
+  findProp
     i
     ( \case
         p `Or` q ->
@@ -105,52 +106,71 @@ checkRule checker p (NegNegE i) =
 -- not a valid application of existing rules
 checkRule _ _ _ = False
 
-checkProof :: Proof -> Either String Checker
-checkProof (Proof steps) = runChecker initChecker steps
+type WithLogMayFail = MaybeT (Writer [String])
 
-runChecker :: Checker -> [Step] -> Either String Checker
-runChecker checker = foldl (\ck step -> do ck' <- ck; stepChecker ck' step) (Right checker)
+checkProof :: Proof -> WithLogMayFail Checker
+checkProof (Proof steps) = foldl (\ck step -> do ck' <- ck; stepChecker ck' step) (return initChecker) steps
 
-stepChecker :: Checker -> Step -> Either String Checker
-stepChecker checker@Checker {premises = _premises, assumptions = _assumptions, stepCnt = _stepCnt, lastProp = _lastProp, kb = _kb} =
-  \case
-    AddPremise p ->
-      Right
+logStep :: Checker -> Step -> WithLogMayFail ()
+logStep checker step = tell [replicate m ' ' ++ "Line " ++ show n ++ ": " ++ show step]
+  where
+    m = 8 * length (assumptions checker)
+    n = lineNum checker
+
+logStep' :: Checker -> StepRef -> Knowledge -> WithLogMayFail ()
+logStep' checker blk derv = tell [replicate m ' ' ++ show blk ++ " " ++ show derv]
+  where
+    m = 8 * length (assumptions checker) - 8
+    n = lineNum checker - 1
+
+wrapMaybeT :: (Monad m) => Maybe a -> MaybeT m a
+wrapMaybeT = MaybeT . return
+
+stepChecker :: Checker -> Step -> WithLogMayFail Checker
+stepChecker checker@Checker {premises = _premises, assumptions = _assumptions, lineNum = _lineNum, lastProp = _lastProp, kb = _kb} step = case step of
+  AddPremise p ->
+    do
+      logStep checker step
+      return
         checker
-          { premises = Set.insert p _premises,
-            kb = Map.insert (SingleRef _stepCnt) (ValidProp p) _kb
+          { premises = p : _premises,
+            kb = Map.insert (SingleRef _lineNum) (ValidProp p) _kb
           }
-          { stepCnt = _stepCnt + 1,
-            lastProp = Right p
+          { lineNum = _lineNum + 1,
+            lastProp = Just p
           }
-    Assume p ->
-      Right
+  Assume p ->
+    do
+      logStep checker step
+      return
         checker
-          { assumptions = SMS.push _assumptions (p, _stepCnt),
-            kb = Map.insert (SingleRef _stepCnt) (ValidProp p) _kb
+          { assumptions = (p, _lineNum) : _assumptions,
+            kb = Map.insert (SingleRef _lineNum) (ValidProp p) _kb
           }
-          { stepCnt = _stepCnt + 1,
-            lastProp = Right p
+          { lineNum = _lineNum + 1,
+            lastProp = Just p
           }
-    ApplyRule p rule ->
-      if checkRule checker p rule
-        then
-          Right
-            checker
-              { kb = Map.insert (SingleRef _stepCnt) (ValidProp p) _kb
-              }
-              { stepCnt = _stepCnt + 1,
-                lastProp = Right p
-              }
-        else Left $ "On line " ++ show _stepCnt ++ ": Fail on " ++ show rule
-    EndAssumption ->
-      do
-        (assumptions', (assumed, i)) <- SMS.pop _assumptions
-        derived <- _lastProp
-        return
-          checker
-            { assumptions = assumptions',
-              kb = Map.insert (BlockRef i (_stepCnt - 1)) (ValidDerv assumed derived) _kb
-            }
-            { lastProp = Left "last step not found"
-            }
+  ApplyRule p rule ->
+    do
+      guard $ checkRule checker p rule
+      logStep checker step
+      return
+        checker
+          { kb = Map.insert (SingleRef _lineNum) (ValidProp p) _kb
+          }
+          { lineNum = _lineNum + 1,
+            lastProp = Just p
+          }
+  EndAssumption ->
+    do
+      ((assumed, i), assumptions') <- wrapMaybeT $ uncons _assumptions
+      derived <- wrapMaybeT _lastProp
+      let blk = BlockRef i (_lineNum - 1); derv = ValidDerv assumed derived
+      logStep' checker blk derv
+      return
+        checker
+          { assumptions = assumptions',
+            kb = Map.insert blk derv _kb
+          }
+          { lastProp = Nothing
+          }

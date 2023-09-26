@@ -1,6 +1,8 @@
 module Main where
 
 import Check
+import Control.Monad.Trans.Maybe
+import Control.Monad.Writer
 import Proof
 import Prop
 
@@ -24,4 +26,9 @@ pf =
     ]
 
 main :: IO ()
-main = print $ checkProof pf
+main = do
+  let (mbck, log) = runWriter $ runMaybeT $ checkProof pf
+  putStrLn $ case mbck of
+    Just _ -> "Valid proof"
+    Nothing -> "Invalid proof"
+  mapM_ putStrLn log

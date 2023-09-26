@@ -10,26 +10,50 @@ import Prop (Prop)
 --   publisher={Cambridge university press}
 -- }
 data Rule
-    = ConjI StepRef StepRef -- conjunction introduction
-    | ConjE StepRef -- conjunction elimination
-    | DisjI StepRef -- disjunction introduction
-    | DisjE StepRef StepRef StepRef -- disjunction elimination
-    | ImplI StepRef -- implication introduction
-    | ImplE StepRef StepRef -- implication elimination
-    | NegI StepRef -- negation introduction
-    | NegE StepRef StepRef -- negation elimination
-    | BotE StepRef -- bottom elimination
-    | NegNegI StepRef -- double negation introduction
-    | NegNegE StepRef -- double negation elimination
-    deriving (Show, Eq, Ord)
+  = ConjI StepRef StepRef -- conjunction introduction
+  | ConjE StepRef -- conjunction elimination
+  | DisjI StepRef -- disjunction introduction
+  | DisjE StepRef StepRef StepRef -- disjunction elimination
+  | ImplI StepRef -- implication introduction
+  | ImplE StepRef StepRef -- implication elimination
+  | NegI StepRef -- negation introduction
+  | NegE StepRef StepRef -- negation elimination
+  | BotE StepRef -- bottom elimination
+  | NegNegI StepRef -- double negation introduction
+  | NegNegE StepRef -- double negation elimination
+  deriving (Eq, Ord)
 
-data StepRef = SingleRef Int | BlockRef Int Int deriving (Show, Eq, Ord)
+instance Show Rule where
+  show (ConjI p q) = "[∧i: " ++ show p ++ ", " ++ show q ++ "]"
+  show (ConjE pq) = "[∧e: " ++ show pq ++ "]"
+  show (DisjI p_q) = "[∨i: " ++ show p_q ++ "]"
+  show (DisjE pq p_x q_x) = "[∨e: " ++ show pq ++ ", " ++ show p_x ++ ", " ++ show q_x ++ "]"
+  show (ImplI p_q) = "[→i: " ++ show p_q ++ "]"
+  show (ImplE p p_q) = "[→e: " ++ show p ++ ", " ++ show p_q ++ "]"
+  show (NegI p_bot) = "[¬i: " ++ show p_bot ++ "]"
+  show (NegE p not_p) = "[¬e: " ++ show p ++ ", " ++ show not_p ++ "]"
+  show (BotE bot) = "[⊥ e: " ++ show bot ++ "]"
+  show (NegNegI p) = "[¬¬e: " ++ show p ++ "]"
+  show (NegNegE nnp) = "[¬¬i: " ++ show nnp ++ "]"
+
+data StepRef = SingleRef Int | BlockRef Int Int deriving (Eq, Ord)
+
+instance Show StepRef where
+  show (SingleRef i) = show i
+  show (BlockRef i j) = "[" ++ show i ++ ", " ++ show j ++ "]"
 
 data Step
-    = AddPremise Prop
-    | Assume Prop
-    | EndAssumption
-    | ApplyRule Prop Rule
+  = AddPremise Prop
+  | Assume Prop
+  | EndAssumption
+  | ApplyRule Prop Rule
+  deriving (Eq)
+
+instance Show Step where
+  show (AddPremise p) = "Premise " ++ show p
+  show (Assume p) = "Assume " ++ show p
+  show EndAssumption = "EndAssumption"
+  show (ApplyRule p r) = "Deduce " ++ show p ++ " " ++ show r
 
 newtype Proof = Proof [Step]
 
