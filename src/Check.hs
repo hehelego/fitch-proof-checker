@@ -5,7 +5,6 @@ module Check (checkProof) where
 import Control.Monad.Except
 import Control.Monad.Writer
 import Data.List (uncons)
-import qualified Data.Map as Map
 import Proof
 import Prop
 
@@ -19,7 +18,7 @@ instance Show Knowledge where
   show (ValidDerv p q) = "Checked " ++ show p ++ " entails " ++ show q
 
 -- knowledge base
-type KB = Map.Map StepRef Knowledge
+type KB = [(StepRef, Knowledge)]
 
 data Checker = Checker
   { premises :: [Prop], -- the premises
@@ -37,17 +36,14 @@ initChecker =
       assumptions = [],
       lineNum = 1,
       lastProp = Nothing,
-      kb = Map.empty
+      kb = []
     }
 
 kbFindProp :: KB -> StepRef -> (Prop -> Bool) -> Bool
-kbFindProp kb i cond = maybe False (\case ValidProp p -> cond p; _ -> False) (Map.lookup i kb)
+kbFindProp kb i cond = maybe False (\case ValidProp p -> cond p; _ -> False) (lookup i kb)
 
 kbFindDerv :: KB -> StepRef -> (Prop -> Prop -> Bool) -> Bool
-kbFindDerv kb i cond = maybe False (\case ValidDerv p q -> cond p q; _ -> False) (Map.lookup i kb)
-
-kbIndex :: KB -> StepRef -> Maybe Knowledge
-kbIndex = flip Map.lookup
+kbFindDerv kb i cond = maybe False (\case ValidDerv p q -> cond p q; _ -> False) (lookup i kb)
 
 checkRule :: Checker -> Prop -> Rule -> Bool
 -- conjunction introduction
@@ -133,7 +129,7 @@ stepChecker checker@Checker {premises = _premises, assumptions = _assumptions, l
       return
         checker
           { premises = p : _premises,
-            kb = Map.insert (SingleRef _lineNum) (ValidProp p) _kb
+            kb = (SingleRef _lineNum, ValidProp p) : _kb
           }
           { lineNum = _lineNum + 1,
             lastProp = Just p
@@ -144,7 +140,7 @@ stepChecker checker@Checker {premises = _premises, assumptions = _assumptions, l
       return
         checker
           { assumptions = (p, _lineNum) : _assumptions,
-            kb = Map.insert (SingleRef _lineNum) (ValidProp p) _kb
+            kb = (SingleRef _lineNum, ValidProp p) : _kb
           }
           { lineNum = _lineNum + 1,
             lastProp = Just p
@@ -155,7 +151,7 @@ stepChecker checker@Checker {premises = _premises, assumptions = _assumptions, l
       logStep checker step
       return
         checker
-          { kb = Map.insert (SingleRef _lineNum) (ValidProp p) _kb
+          { kb = (SingleRef _lineNum, ValidProp p) : _kb
           }
           { lineNum = _lineNum + 1,
             lastProp = Just p
@@ -163,13 +159,13 @@ stepChecker checker@Checker {premises = _premises, assumptions = _assumptions, l
   EndAssumption ->
     do
       ((assumed, i), assumptions') <- eitherToExcept . maybeToEither () $ uncons _assumptions
-      derived <- eitherToExcept . maybeToEither () $  _lastProp
+      derived <- eitherToExcept . maybeToEither () $ _lastProp
       let blk = BlockRef i (_lineNum - 1); derv = ValidDerv assumed derived
       logStep' checker blk derv
       return
         checker
           { assumptions = assumptions',
-            kb = Map.insert blk derv _kb
+            kb = (blk, derv) : _kb
           }
           { lastProp = Nothing
           }
