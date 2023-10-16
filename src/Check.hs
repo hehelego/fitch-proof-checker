@@ -2,7 +2,7 @@
 
 module Check (checkProof) where
 
-import Control.Monad.Trans.Maybe
+import Control.Monad.Except
 import Control.Monad.Writer
 import Data.List (uncons)
 import qualified Data.Map as Map
@@ -106,7 +106,9 @@ checkRule checker p (NegNegE i) =
 -- not a valid application of existing rules
 checkRule _ _ _ = False
 
-type WithLogMayFail = MaybeT (Writer [String])
+type Err = ()
+
+type WithLogMayFail = ExceptT Err (Writer [String])
 
 checkProof :: Proof -> WithLogMayFail Checker
 checkProof (Proof steps) = foldl (\ck step -> do ck' <- ck; stepChecker ck' step) (return initChecker) steps
@@ -122,9 +124,6 @@ logStep' checker blk derv = tell [replicate m ' ' ++ show blk ++ " " ++ show der
   where
     m = 8 * length (assumptions checker) - 8
     n = lineNum checker - 1
-
-wrapMaybeT :: (Monad m) => Maybe a -> MaybeT m a
-wrapMaybeT = MaybeT . return
 
 stepChecker :: Checker -> Step -> WithLogMayFail Checker
 stepChecker checker@Checker {premises = _premises, assumptions = _assumptions, lineNum = _lineNum, lastProp = _lastProp, kb = _kb} step = case step of
@@ -163,8 +162,8 @@ stepChecker checker@Checker {premises = _premises, assumptions = _assumptions, l
           }
   EndAssumption ->
     do
-      ((assumed, i), assumptions') <- wrapMaybeT $ uncons _assumptions
-      derived <- wrapMaybeT _lastProp
+      ((assumed, i), assumptions') <- eitherToExcept . maybeToEither () $ uncons _assumptions
+      derived <- eitherToExcept . maybeToEither () $  _lastProp
       let blk = BlockRef i (_lineNum - 1); derv = ValidDerv assumed derived
       logStep' checker blk derv
       return
@@ -174,3 +173,10 @@ stepChecker checker@Checker {premises = _premises, assumptions = _assumptions, l
           }
           { lastProp = Nothing
           }
+
+eitherToExcept :: (Monad m) => Either Err a -> ExceptT Err m a
+eitherToExcept = ExceptT . return
+
+maybeToEither :: e -> Maybe a -> Either e a
+maybeToEither _ (Just x) = Right x
+maybeToEither err Nothing = Left err
