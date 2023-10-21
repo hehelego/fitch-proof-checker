@@ -24,7 +24,7 @@ extra-source-files:
     README.md
 
 library
-    exposed-modules:  Check, Proof, Prop
+    exposed-modules:  Check, Proof, Prop, FitchParse
 
     -- Modules included in this library but not exported.
     -- other-modules:
