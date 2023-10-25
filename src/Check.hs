@@ -113,7 +113,7 @@ type Err = ()
 type WithLogMayFail = ExceptT Err (Writer [String])
 
 checkProof :: Proof -> WithLogMayFail Checker
-checkProof (Proof steps) = foldl (\ck step -> do ck' <- ck; stepChecker ck' step) (return initChecker) steps
+checkProof (Proof steps) = foldM stepChecker initChecker steps
 
 logStep :: Checker -> Step -> WithLogMayFail ()
 logStep checker step = tell [replicate m ' ' ++ "Line " ++ show n ++ ": " ++ show step]
