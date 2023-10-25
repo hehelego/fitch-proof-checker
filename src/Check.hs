@@ -1,10 +1,9 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Check (checkProof) where
 
 import Control.Monad.Except
 import Control.Monad.Writer
 import Data.List (uncons)
+import Data.Maybe (fromMaybe)
 import Proof
 import Prop
 
@@ -39,68 +38,75 @@ initChecker =
       kb = []
     }
 
-kbFindProp :: KB -> StepRef -> (Prop -> Bool) -> Bool
-kbFindProp kb i cond = maybe False (\case ValidProp p -> cond p; _ -> False) (lookup i kb)
-
-kbFindDerv :: KB -> StepRef -> (Prop -> Prop -> Bool) -> Bool
-kbFindDerv kb i cond = maybe False (\case ValidDerv p q -> cond p q; _ -> False) (lookup i kb)
-
-checkRule :: Checker -> Prop -> Rule -> Bool
 -- conjunction introduction
-checkRule checker (p `And` q) (ConjI i j) =
-  findProp i (== p) && findProp j (== q)
-  where
-    findProp = kbFindProp $ kb checker
+conjI :: Prop -> Knowledge -> Knowledge -> Bool
+conjI (p `And` q) (ValidProp p') (ValidProp q') = p == p' && q == q'
+conjI _ _ _ = False
+
 -- conjunction elimination
-checkRule checker x (ConjE i) =
-  kbFindProp (kb checker) i (\case p `And` q -> x == p || x == q; _ -> False)
+conjE :: Prop -> Knowledge -> Bool
+conjE r (ValidProp (p `And` q)) = r == p || r == q
+conjE _ _ = False
+
 -- disjunction introduction
-checkRule checker (p `Or` q) (DisjI i) =
-  kbFindProp (kb checker) i (\r -> p == r || q == r)
+disjI :: Prop -> Knowledge -> Bool
+disjI (p `Or` q) (ValidProp r) = p == r || q == r
+disjI _ _ = False
+
 -- disjunction elimination
-checkRule checker x (DisjE i j k) =
-  findProp
-    i
-    ( \case
-        p `Or` q ->
-          findDerv j (\assumed derived -> assumed == p && derived == x)
-            && findDerv k (\assumed derived -> assumed == q && derived == x)
-        _ -> False
-    )
-  where
-    findProp = kbFindProp $ kb checker
-    findDerv = kbFindDerv $ kb checker
+disjE :: Prop -> Knowledge -> Knowledge -> Knowledge -> Bool
+disjE x (ValidProp (p `Or` q)) (ValidDerv p' px) (ValidDerv q' qx) = p == p' && q == q' && x == px && x == qx
+disjE _ _ _ _ = False
+
 -- implication introduction
-checkRule checker (p `Impl` q) (ImplI i) =
-  kbFindDerv (kb checker) i (\assumed derived -> assumed == p && derived == q)
+implI :: Prop -> Knowledge -> Bool
+implI (p `Impl` q) (ValidDerv p' q') = p == p' && q == q'
+implI _ _ = False
+
 -- implication elimination
-checkRule checker q (ImplE i j) =
-  findProp
-    i
-    (\p -> findProp j (\pq -> pq == p `Impl` q))
-  where
-    findProp = kbFindProp $ kb checker
+implE :: Prop -> Knowledge -> Knowledge -> Bool
+implE q (ValidProp p) (ValidProp (p' `Impl` q')) = p == p' && q == q'
+implE _ _ _ = False
+
 -- negation introduction
-checkRule checker (Not p) (NegI i) =
-  kbFindDerv (kb checker) i (\assumed derived -> assumed == p && derived == Bottom)
+negI :: Prop -> Knowledge -> Bool
+negI (Not p) (ValidDerv p' Bottom) = p == p'
+negI _ _ = False
+
 -- negation elimination
-checkRule checker Bottom (NegE i j) =
-  findProp
-    i
-    (\p -> findProp j (== Not p))
-  where
-    findProp = kbFindProp $ kb checker
+negE :: Prop -> Knowledge -> Knowledge -> Bool
+negE Bottom (ValidProp p) (ValidProp (Not p')) = p == p'
+negE _ _ _ = False
+
 -- bottom elimination
-checkRule checker _ (BotE i) =
-  kbFindProp (kb checker) i (== Bottom)
+botE _ (ValidProp Bottom) = True
+botE _ _ = False
+
 -- double negation introduction
-checkRule checker (Not (Not p)) (NegNegI i) =
-  kbFindProp (kb checker) i (== p)
+negnegI :: Prop -> Knowledge -> Bool
+negnegI (Not (Not p)) (ValidProp p') = p == p'
+negnegI _ _ = False
+
 -- double negation elimination
-checkRule checker p (NegNegE i) =
-  kbFindProp (kb checker) i (== Not (Not p))
--- not a valid application of existing rules
-checkRule _ _ _ = False
+negnegE :: Prop -> Knowledge -> Bool
+negnegE p (ValidProp (Not (Not p'))) = p == p'
+negnegE _ _ = False
+
+type KBFinder = StepRef -> Maybe Knowledge
+
+checkRule :: KBFinder -> Prop -> Rule -> Bool
+checkRule kb p rule = orFalse $ case rule of
+  ConjI i j -> conjI p <$> kb i <*> kb j
+  ConjE i -> conjE p <$> kb i
+  DisjI i -> disjI p <$> kb i
+  DisjE i j k -> disjE p <$> kb i <*> kb j <*> kb k
+  ImplI i -> implI p <$> kb i
+  ImplE i j -> implE p <$> kb i <*> kb j
+  NegI i -> negI p <$> kb i
+  NegE i j -> negE p <$> kb i <*> kb j
+  BotE i -> botE p <$> kb i
+  NegNegI i -> negnegI p <$> kb i
+  NegNegE i -> negnegE p <$> kb i
 
 type Err = ()
 
@@ -147,7 +153,8 @@ stepChecker checker@Checker {premises = _premises, assumptions = _assumptions, l
           }
   ApplyRule p rule ->
     do
-      guard $ checkRule checker p rule
+      let kbfind i = lookup i (kb checker)
+      guard $ checkRule kbfind p rule
       logStep checker step
       return
         checker
@@ -158,8 +165,8 @@ stepChecker checker@Checker {premises = _premises, assumptions = _assumptions, l
           }
   EndAssumption ->
     do
-      ((assumed, i), assumptions') <- eitherToExcept . maybeToEither () $ uncons _assumptions
-      derived <- eitherToExcept . maybeToEither () $ _lastProp
+      ((assumed, i), assumptions') <- maybeToExcept $ uncons _assumptions
+      derived <- maybeToExcept _lastProp
       let blk = BlockRef i (_lineNum - 1); derv = ValidDerv assumed derived
       logStep' checker blk derv
       return
@@ -170,9 +177,10 @@ stepChecker checker@Checker {premises = _premises, assumptions = _assumptions, l
           { lastProp = Nothing
           }
 
-eitherToExcept :: (Monad m) => Either Err a -> ExceptT Err m a
-eitherToExcept = ExceptT . return
+maybeToExcept :: (Monad m) => Maybe a -> ExceptT () m a
+maybeToExcept (Just x) = ExceptT . pure $ Right x
+maybeToExcept Nothing = ExceptT . pure $ Left ()
 
-maybeToEither :: e -> Maybe a -> Either e a
-maybeToEither _ (Just x) = Right x
-maybeToEither err Nothing = Left err
+orFalse :: Maybe Bool -> Bool
+orFalse (Just True) = True
+orFalse _ = False
