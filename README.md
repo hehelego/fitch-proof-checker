@@ -55,7 +55,8 @@ Derived rules:
 - [ ] use exercises in _logic in computer science` as tests to validate the correctness of this checker
 - [ ] test whether the checker does reject typical invalid proofs
 - [x] support referencing proved statements in parent blocks
-- [ ] implement a DSL for writing proofs
+- [x] implement a DSL for writing proofs
+- [ ] test proof parser
 
 ## license
 
