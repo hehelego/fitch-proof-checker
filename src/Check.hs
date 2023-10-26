@@ -112,8 +112,25 @@ type Err = ()
 
 type WithLogMayFail = ExceptT Err (Writer [String])
 
+-- Check proof validity: whetheer every rule application is correct
 checkProof :: Proof -> WithLogMayFail Checker
 checkProof (Proof steps) = foldM stepChecker initChecker steps
+
+-- Check proof syntax: proof structure
+--
+-- Proof -> Premises Steps
+-- Premises -> epsilon | AddPremise Premises
+-- Steps -> epsilon | Assume Steps EndAssumption | ApplyRule
+checkProofSyntax :: Proof -> Bool
+checkProofSyntax (Proof steps) = premiseFirst && assumptionMatch
+  where
+    premiseFirst = not $ any isPrem $ dropWhile isPrem steps
+    assumptionMatch = (0, 0) == foldl matchIter (0, 0) steps
+    matchIter (m, e) (AddPremise _) = (m, e + 1)
+    matchIter (m, e) EndAssumption = (min m (e - 1), e - 1)
+    matchIter me _ = me
+    isPrem (AddPremise _) = True
+    isPrem _ = False
 
 logStep :: Checker -> Step -> WithLogMayFail ()
 logStep checker step = tell [replicate m ' ' ++ "Line " ++ show n ++ ": " ++ show step]

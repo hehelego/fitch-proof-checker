@@ -56,11 +56,3 @@ instance Show Step where
   show (ApplyRule p r) = "Deduce " ++ show p ++ " " ++ show r
 
 newtype Proof = Proof [Step]
-
--- TODO: implement proof syntax check
--- TODO: implement proof parser
--- Proof -> Premises Steps
--- Premises -> \epsilon | proposition Premises
--- Steps -> \epsilon | makeAssumption Steps endAssumption | applyRule Step
-checkProofSyntax :: Proof -> Bool
-checkProofSyntax _ = True
