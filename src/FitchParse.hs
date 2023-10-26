@@ -3,6 +3,7 @@ module FitchParse where
 import Control.Applicative (Alternative (empty, many, some, (<|>)))
 import Control.Monad (guard)
 import Data.Functor (($>), (<$), (<$>))
+import Proof (Proof (..), Rule (..), Step (..), StepRef (..))
 import Prop (Prop (..))
 
 newtype Parser a = Parser {runParser :: String -> Either String (a, String)}
@@ -108,16 +109,37 @@ atomP = Atom <$> surrounded intP
     surrounded = between (char '[') (char ']')
 
 bottomP :: Parser Prop
-bottomP = Bottom <$ string "BOTTOM"
+bottomP = Bottom <$ symbol "BOTTOM"
 
 notP :: Parser Prop
 notP = Not <$> (symbol "NOT" *> propP)
 
-andP :: Parser Prop
-andP = And <$> propP <* symbol "AND" <*> propP
+refP :: Parser StepRef
+refP = block <|> step
+  where
+    block = BlockRef <$> token intP <*> token intP
+    step = SingleRef <$> token intP
 
-orP :: Parser Prop
-orP = Or <$> propP <* symbol "OR" <*> propP
+ruleP =
+  symbol "Intr_Conj" *> (ConjI <$> refP <*> refP)
+    <|> symbol "Elim_Conj" *> (ConjE <$> refP)
+    <|> symbol "Intr_Disj" *> (DisjI <$> refP)
+    <|> symbol "Elim_Disj" *> (DisjE <$> refP <*> refP <*> refP)
+    <|> symbol "Intr_Impl" *> (ImplI <$> refP)
+    <|> symbol "Elim_Impl" *> (ImplE <$> refP <*> refP)
+    <|> symbol "Intr_Neg" *> (NegI <$> refP)
+    <|> symbol "Elim_Neg" *> (NegE <$> refP <*> refP)
+    <|> symbol "Elim_Bot" *> (BotE <$> refP)
+    <|> symbol "Intr_Negneg" *> (NegNegI <$> refP)
+    <|> symbol "Elim_Negneg" *> (NegNegE <$> refP)
 
-implP :: Parser Prop
-implP = Impl <$> propP <* symbol "IMPLIES" <*> propP
+proofP :: Parser Proof
+proofP = Proof <$> steps
+  where
+    steps = many (premiseP <|> deriveP <|> asumeP <|> endAssumeP <* eol)
+    premiseP = AddPremise <$> (symbol "Premise" *> token propP)
+    deriveP = ApplyRule <$> (symbol "Derive" *> token propP) <*> ruleP
+    asumeP = Assume <$> (symbol "Assume" *> token propP)
+    endAssumeP = EndAssumption <$ symbol "End"
+
+eol = token $ char '\n' $> ()
