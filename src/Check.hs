@@ -1,4 +1,4 @@
-module Check (checkProof) where
+module Check (checkProof, checkProofSyntax) where
 
 import Control.Monad.Except
 import Control.Monad.Writer
@@ -22,7 +22,7 @@ type KB = [(StepRef, Knowledge)]
 data Checker = Checker
   { premises :: [Prop], -- the premises
     assumptions :: [(Prop, Int)], -- currently visible assumptions: (assumed proposition, line number)
-    lineNum :: Int, -- current line, count `AddPremise`, `Assume`, and `ApplyRule`.
+    lineNum :: Int, -- current line, count `AddPremise`, `Assume`, `EndAssumption`, and `ApplyRule`.
     lastProp :: Maybe Prop, -- last proposition line `AddPremise`, `Assume`, and `ApplyRule`.
     kb :: KB -- checked steps in current state
   }
@@ -184,14 +184,15 @@ stepChecker checker@Checker {premises = _premises, assumptions = _assumptions, l
     do
       ((assumed, i), assumptions') <- maybeToExcept $ uncons _assumptions
       derived <- maybeToExcept _lastProp
-      let blk = BlockRef i (_lineNum - 1); derv = ValidDerv assumed derived
+      let blk = BlockRef i _lineNum; derv = ValidDerv assumed derived
       logStep' checker blk derv
       return
         checker
           { assumptions = assumptions',
             kb = (blk, derv) : _kb
           }
-          { lastProp = Nothing
+          { lineNum = _lineNum + 1,
+            lastProp = Nothing
           }
 
 maybeToExcept :: (Monad m) => Maybe a -> ExceptT () m a
