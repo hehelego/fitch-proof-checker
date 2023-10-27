@@ -15,47 +15,34 @@
 
 ## rules of inferences
 
+Basic rules:
 
-- conjunction introduction:  
-    $$\dfrac{\phi \quad \psi}{\phi \land \psi}\ \land_i$$  
-- conjunction elimination:  
-    $$\dfrac{\phi \land \psi}{\phi}\ \land_e \qquad \dfrac{\phi \land \psi}{\psi}\ \land_e$$  
-- disjunction introduction:  
-    $$\dfrac{\phi}{\phi \lor \psi}\ \lor_i \qquad \dfrac{\psi}{\phi \lor \psi}\ \lor_i$$  
-- disjunction elimination:  
-    $$\dfrac{\phi \lor \psi\quad \begin{bmatrix}\phi \\ \vdots \\ \chi\end{bmatrix}\quad \begin{bmatrix}\psi \\ \vdots \\ \chi\end{bmatrix}}{\chi}\ \lor_e$$  
-- implication introduction:  
-    $$\dfrac{\begin{bmatrix}\phi \\ \vdots \\ \psi\end{bmatrix}}{\phi \to \psi}\ \to_i$$  
-- implication elimination (latin: modus ponens):  
-    $$\dfrac{\phi \quad \phi\to\psi}{\psi}\ \to_e$$
-- negation introduction:  
-    $$\dfrac{\begin{bmatrix}\phi \\ \vdots \\ \bot\end{bmatrix}}{\lnot\phi}\ \lnot_i$$
-- negation elimination:  
-    $$\dfrac{\phi \quad \lnot\phi}{\bot}\ \lnot_e$$
-- bottom elimination:  
-    $$\dfrac{\bot}{\phi}\ \bot_e$$
-- double negation elimination:  
-    $$\dfrac{\lnot\lnot\phi}{\phi}\ \lnot\lnot_e$$
+|                              | Introduction rule                                                                  | Elimination rule                                                                                                                                       |
+|------------------------------|------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Conjunction $\land$          | $\dfrac{\phi \quad \psi}{\phi \land \psi}\ \land_i$                                | $\dfrac{\phi \land \psi}{\phi}\ \land_e$ and $\dfrac{\phi \land \psi}{\psi}\ \land_e$                                                                  |
+| Disjunction $\lor$           | $\dfrac{\phi}{\phi \lor \psi}\ \lor_i$ and $\dfrac{\psi}{\phi \lor \psi}\ \lor_i$  | $\dfrac{\begin{matrix}\\ \\ \phi \lor \psi\end{matrix}\quad \begin{bmatrix}\phi \\ \vdots \\ \chi\end{bmatrix}\quad \begin{bmatrix}\psi \\ \vdots \\ \chi\end{bmatrix}}{\chi}\ \lor_e$ |
+| Implication $\to$            | $\dfrac{\begin{bmatrix}\phi \\ \vdots \\ \psi\end{bmatrix}}{\phi \to \psi}\ \to_i$ | $\dfrac{\phi \quad \phi\to\psi}{\psi}\ \to_e$                                                                                                          |
+| Negation $\lnot$             | $\dfrac{\begin{bmatrix}\phi \\ \vdots \\ \bot\end{bmatrix}}{\lnot\phi}\ \lnot_i$   | Not Applicable                                                                                                                                         |
+| Double Negation $\lnot\lnot$ | $\dfrac{\phi}{\lnot\lnot\phi}\ \lnot\lnot_i$                                       | $\dfrac{\lnot\lnot\phi}{\phi}\ \lnot\lnot_e$                                                                                                           |
+| Bottom $\bot$                | $\dfrac{\phi \quad \lnot\phi}{\bot}\ \bot_i$                                       | $\dfrac{\bot}{\phi}\ \bot_e$                                                                                                                           |
+
 
 Derived rules:
 
-- modus tollens:  
-    $$\dfrac{\lnot\psi \quad \phi\to\psi}{\lnot\phi}\ \text{MT}$$
-- double negation introduction:  
-    $$\dfrac{\phi}{\lnot\lnot\phi}\ \lnot\lnot_i$$
-- proof by contradiction:  
-    $$\dfrac{\begin{bmatrix}\phi \\ \vdots \\ \bot\end{bmatrix}}{\lnot\phi}\ \text{PBC}$$
-- law of excluded middle:  
-    $$\dfrac{}{\phi \lor \lnot\phi}\ \text{LEM}$$
-
+| rule name               | formulation                                                                         |
+|-------------------------|-------------------------------------------------------------------------------------|
+| modus tollens           | $\dfrac{\lnot\psi \quad \phi\to\psi}{\lnot\phi}\ \text{MT}$                         |
+| proof by contradiction  | $\dfrac{\begin{bmatrix}\phi \\ \vdots \\ \bot\end{bmatrix}}{\lnot\phi}\ \text{PBC}$ |
+| law of exccluded middle | $\dfrac{}{\phi \lor \lnot\phi}\ \text{LEM}$                                         |
 
 
 ## todo
 
-- [ ] use exercises in _logic in computer science` as tests to validate the correctness of this checker
+- [ ] use exercises in _logic in computer science_ as tests to validate the correctness of this checker
 - [ ] test whether the checker does reject typical invalid proofs
 - [x] support referencing proved statements in parent blocks
 - [x] implement a DSL for writing proofs
+- [ ] enable named atomic propositions
 - [ ] test proof parser
 
 ## license
