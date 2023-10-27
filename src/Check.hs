@@ -4,6 +4,7 @@ import Control.Monad.Except
 import Control.Monad.Writer
 import Data.List (uncons)
 import Data.Maybe (fromMaybe)
+import Debug.Trace (trace)
 import Proof
 import Prop
 
@@ -126,7 +127,7 @@ checkProofSyntax (Proof steps) = premiseFirst && assumptionMatch
   where
     premiseFirst = not $ any isPrem $ dropWhile isPrem steps
     assumptionMatch = (0, 0) == foldl matchIter (0, 0) steps
-    matchIter (m, e) (AddPremise _) = (m, e + 1)
+    matchIter (m, e) (Assume _) = (m, e + 1)
     matchIter (m, e) EndAssumption = (min m (e - 1), e - 1)
     matchIter me _ = me
     isPrem (AddPremise _) = True
