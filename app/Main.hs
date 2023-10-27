@@ -3,32 +3,32 @@ module Main where
 import Check
 import Control.Monad.Except
 import Control.Monad.Writer
+import FitchParse (Parser (runParser), proofP)
 import Proof
 import Prop
-
-[p, q, r, s, t, u, v, w] = Atom <$> [1 .. 8]
-
--- (p -> q) |- (r or p) -> (r or q)
-pf =
-  Proof
-    [ AddPremise (p `Impl` q), -- 1
-      Assume (r `Or` p), -- 2:7
-      Assume r, -- 3:4
-      ApplyRule (r `Or` q) (DisjI (SingleRef 3)), -- 4
-      EndAssumption,
-      Assume p, -- 5:7
-      ApplyRule q (ImplE (SingleRef 5) (SingleRef 1)), -- 6
-      ApplyRule (r `Or` q) (DisjI (SingleRef 6)), -- 7
-      EndAssumption,
-      ApplyRule (r `Or` q) (DisjE (SingleRef 2) (BlockRef 3 4) (BlockRef 5 7)), -- 8
-      EndAssumption,
-      ApplyRule ((r `Or` p) `Impl` (r `Or` q)) (ImplI (BlockRef 2 8)) -- 9
-    ]
+import System.Environment (getArgs)
 
 main :: IO ()
 main = do
-  let (mbck, log) = runWriter $ runExceptT $ checkProof pf
-  putStrLn $ case mbck of
-    Right _ -> "Valid proof"
-    Left err -> "Invalid proof: " ++ show err
-  mapM_ putStrLn log
+  args <- getArgs
+  let proofFile = head args
+  proofText <- readFile proofFile
+  case runParser proofP proofText of
+    Left err -> print err
+    Right (proof, unparsed) ->
+      if null unparsed
+        then showProof proof >> check proof
+        else putStrLn "Cannot parse the entire file:" >> putStrLn unparsed
+
+showProof :: Proof -> IO ()
+showProof (Proof steps) = putStrLn "BEGIN PROOF" >> mapM_ print steps >> putStrLn "END PROOF"
+
+check :: Proof -> IO ()
+check proof =
+  if checkProofSyntax proof
+    then
+      let (mbck, log) = runWriter $ runExceptT $ checkProof proof
+       in case mbck of
+            Right _ -> putStrLn "Correct proof"
+            Left err -> print err
+    else putStrLn "Invalid proof syntax"
