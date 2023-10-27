@@ -114,24 +114,24 @@ bottomP = Bottom <$ symbol "BOTTOM"
 notP :: Parser Prop
 notP = Not <$> (symbol "NOT" *> propP)
 
-refP :: Parser StepRef
-refP = block <|> step
-  where
-    block = BlockRef <$> token intP <*> token intP
-    step = SingleRef <$> token intP
+ref1P :: Parser StepRef
+ref1P = token $ SingleRef <$> intP
+
+ref2P :: Parser StepRef
+ref2P = token $ between (char '(') (char ')') $ BlockRef <$> intP <*> intP
 
 ruleP =
-  symbol "Intr_Conj" *> (ConjI <$> refP <*> refP)
-    <|> symbol "Elim_Conj" *> (ConjE <$> refP)
-    <|> symbol "Intr_Disj" *> (DisjI <$> refP)
-    <|> symbol "Elim_Disj" *> (DisjE <$> refP <*> refP <*> refP)
-    <|> symbol "Intr_Impl" *> (ImplI <$> refP)
-    <|> symbol "Elim_Impl" *> (ImplE <$> refP <*> refP)
-    <|> symbol "Intr_Neg" *> (NegI <$> refP)
-    <|> symbol "Elim_Neg" *> (NegE <$> refP <*> refP)
-    <|> symbol "Elim_Bot" *> (BotE <$> refP)
-    <|> symbol "Intr_Negneg" *> (NegNegI <$> refP)
-    <|> symbol "Elim_Negneg" *> (NegNegE <$> refP)
+  symbol "Intr_Conj" *> (ConjI <$> ref1P <*> ref1P)
+    <|> symbol "Elim_Conj" *> (ConjE <$> ref1P)
+    <|> symbol "Intr_Disj" *> (DisjI <$> ref1P)
+    <|> symbol "Elim_Disj" *> (DisjE <$> ref1P <*> ref2P <*> ref2P)
+    <|> symbol "Intr_Impl" *> (ImplI <$> ref2P)
+    <|> symbol "Elim_Impl" *> (ImplE <$> ref1P <*> ref1P)
+    <|> symbol "Intr_Neg" *> (NegI <$> ref2P)
+    <|> symbol "Elim_Neg" *> (NegE <$> ref1P <*> ref1P)
+    <|> symbol "Elim_Bot" *> (BotE <$> ref1P)
+    <|> symbol "Intr_Negneg" *> (NegNegI <$> ref1P)
+    <|> symbol "Elim_Negneg" *> (NegNegE <$> ref1P)
 
 proofP :: Parser Proof
 proofP = Proof <$> steps
