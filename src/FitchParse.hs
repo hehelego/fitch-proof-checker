@@ -136,10 +136,11 @@ ruleP =
 proofP :: Parser Proof
 proofP = Proof <$> steps
   where
-    steps = many (premiseP <|> deriveP <|> asumeP <|> endAssumeP <* eol)
+    steps = many $ step <* eol
+    step = premiseP <|> deriveP <|> asumeP <|> endAssumeP
     premiseP = AddPremise <$> (symbol "Premise" *> token propP)
     deriveP = ApplyRule <$> (symbol "Derive" *> token propP) <*> ruleP
     asumeP = Assume <$> (symbol "Assume" *> token propP)
     endAssumeP = EndAssumption <$ symbol "End"
 
-eol = token $ char '\n' $> ()
+eol = spaces <* char '\n'
