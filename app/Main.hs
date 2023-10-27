@@ -30,5 +30,5 @@ check proof =
       let (mbck, log) = runWriter $ runExceptT $ checkProof proof
        in case mbck of
             Right _ -> putStrLn "Correct proof"
-            Left err -> print err
+            Left err -> putStr "Incorrect proof: " >> print err
     else putStrLn "Invalid proof syntax"
