@@ -1,0 +1,12 @@
+Premise [0] IMPL [1]
+Assume [2] OR [0]
+    Assume [2]
+    Derive [2] OR [1] Intr_Disj 3
+    End
+    Assume [0]
+    Derive [1] Elim_Impl 6 1
+    Derive [2] OR [1] Intr_Disj 7
+    End
+    Derive [2] OR [1] Elim_Disj 2 (3 5) (6 9)
+End
+Derive ([2] OR [0]) IMPL ([2] OR [1]) Intr_Impl (2 11)
