@@ -128,7 +128,7 @@ ruleP =
     <|> symbol "Intr_Impl" *> (ImplI <$> ref2P)
     <|> symbol "Elim_Impl" *> (ImplE <$> ref1P <*> ref1P)
     <|> symbol "Intr_Neg" *> (NegI <$> ref2P)
-    <|> symbol "Elim_Neg" *> (NegE <$> ref1P <*> ref1P)
+    <|> symbol "Intr_Bot" *> (BotI <$> ref1P <*> ref1P)
     <|> symbol "Elim_Bot" *> (BotE <$> ref1P)
     <|> symbol "Intr_Negneg" *> (NegNegI <$> ref1P)
     <|> symbol "Elim_Negneg" *> (NegNegE <$> ref1P)

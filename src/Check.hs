@@ -74,10 +74,10 @@ negI :: Prop -> Knowledge -> Bool
 negI (Not p) (ValidDerv p' Bottom) = p == p'
 negI _ _ = False
 
--- negation elimination
-negE :: Prop -> Knowledge -> Knowledge -> Bool
-negE Bottom (ValidProp p) (ValidProp (Not p')) = p == p'
-negE _ _ _ = False
+-- bottom introduction
+botI :: Prop -> Knowledge -> Knowledge -> Bool
+botI Bottom (ValidProp p) (ValidProp (Not p')) = p == p'
+botI _ _ _ = False
 
 -- bottom elimination
 botE _ (ValidProp Bottom) = True
@@ -104,7 +104,7 @@ checkRule kb p rule = orFalse $ case rule of
   ImplI i -> implI p <$> kb i
   ImplE i j -> implE p <$> kb i <*> kb j
   NegI i -> negI p <$> kb i
-  NegE i j -> negE p <$> kb i <*> kb j
+  BotI i j -> botI p <$> kb i <*> kb j
   BotE i -> botE p <$> kb i
   NegNegI i -> negnegI p <$> kb i
   NegNegE i -> negnegE p <$> kb i

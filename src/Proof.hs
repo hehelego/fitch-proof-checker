@@ -17,7 +17,7 @@ data Rule
   | ImplI StepRef -- implication introduction
   | ImplE StepRef StepRef -- implication elimination
   | NegI StepRef -- negation introduction
-  | NegE StepRef StepRef -- negation elimination
+  | BotI StepRef StepRef -- bottom introduction
   | BotE StepRef -- bottom elimination
   | NegNegI StepRef -- double negation introduction
   | NegNegE StepRef -- double negation elimination
@@ -31,7 +31,7 @@ instance Show Rule where
   show (ImplI p_q) = "[→i: " ++ show p_q ++ "]"
   show (ImplE p p_q) = "[→e: " ++ show p ++ ", " ++ show p_q ++ "]"
   show (NegI p_bot) = "[¬i: " ++ show p_bot ++ "]"
-  show (NegE p not_p) = "[¬e: " ++ show p ++ ", " ++ show not_p ++ "]"
+  show (BotI p not_p) = "[⊥ i: " ++ show p ++ ", " ++ show not_p ++ "]"
   show (BotE bot) = "[⊥ e: " ++ show bot ++ "]"
   show (NegNegI p) = "[¬¬e: " ++ show p ++ "]"
   show (NegNegE nnp) = "[¬¬i: " ++ show nnp ++ "]"
