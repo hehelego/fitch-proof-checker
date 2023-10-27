@@ -118,7 +118,7 @@ ref1P :: Parser StepRef
 ref1P = token $ SingleRef <$> intP
 
 ref2P :: Parser StepRef
-ref2P = token $ between (char '(') (char ')') $ BlockRef <$> intP <*> intP
+ref2P = token $ between (char '(') (char ')') $ BlockRef <$> intP <*> token intP
 
 ruleP =
   symbol "Intr_Conj" *> (ConjI <$> ref1P <*> ref1P)
