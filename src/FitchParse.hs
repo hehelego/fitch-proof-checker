@@ -70,7 +70,7 @@ token :: Parser a -> Parser a
 token p = spaces *> p
 
 symbol :: String -> Parser ()
-symbol s = spaces *> string s $> ()
+symbol s = (spaces *> string s $> ()) <|> fail ("expected symbol: " ++ s)
 
 oneOf :: [Char] -> Parser Char
 oneOf cs = condChar (`elem` cs)
@@ -132,6 +132,7 @@ ruleP =
     <|> symbol "Elim_Bot" *> (BotE <$> ref1P)
     <|> symbol "Intr_Negneg" *> (NegNegI <$> ref1P)
     <|> symbol "Elim_Negneg" *> (NegNegE <$> ref1P)
+    <|> fail "unrecognized inference rule"
 
 proofP :: Parser Proof
 proofP = Proof <$> steps
