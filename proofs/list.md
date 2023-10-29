@@ -44,3 +44,13 @@ Incorrect rule application
     - parser correctly
     - valid structure
     - incorrect proof
+
+## 6.fitch
+
+Refering to a unknown step
+
+- $\vdash p \lor q$
+- expected result:
+    - parser correctly
+    - valid structure
+    - incorrect proof
