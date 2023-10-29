@@ -1,0 +1,4 @@
+Assume [0]
+    Derive [0] OR [1]    Intr_Disj 1
+End
+Derive [0] OR [1] OR [2] Intr_Disj 2
