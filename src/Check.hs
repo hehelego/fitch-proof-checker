@@ -93,10 +93,17 @@ negnegE :: Prop -> Knowledge -> Bool
 negnegE p (ValidProp (Not (Not p'))) = p == p'
 negnegE _ _ = False
 
-type KBFinder = StepRef -> Maybe Knowledge
+type Err = String
 
-checkRule :: KBFinder -> Prop -> Rule -> Bool
-checkRule kb p rule = orFalse $ case rule of
+type WithLogMayFail = ExceptT Err (Writer String)
+
+type KBFinder = StepRef -> WithLogMayFail Knowledge
+
+mkFinder :: KB -> KBFinder
+mkFinder kb i = maybeToExcept (lookup i kb) ("Cannot find " ++ show i ++ " in " ++ show kb)
+
+checkRule :: KBFinder -> Prop -> Rule -> WithLogMayFail Bool
+checkRule kb p rule = case rule of
   ConjI i j -> conjI p <$> kb i <*> kb j
   ConjE i -> conjE p <$> kb i
   DisjI i -> disjI p <$> kb i
@@ -108,10 +115,6 @@ checkRule kb p rule = orFalse $ case rule of
   BotE i -> botE p <$> kb i
   NegNegI i -> negnegI p <$> kb i
   NegNegE i -> negnegE p <$> kb i
-
-type Err = ()
-
-type WithLogMayFail = ExceptT Err (Writer String)
 
 -- Check proof validity: whetheer every rule application is correct
 checkProof :: Proof -> WithLogMayFail Checker
@@ -148,10 +151,14 @@ stepChecker checker@Checker {premises = premises, assumptions = assumptions, lin
   tell "\n"
 
   -- check validity
-  guard $ case step of
-    ApplyRule p rule -> let kbfind i = lookup i kb in checkRule kbfind p rule
-    EndAssumption -> not (null assumptions) && isJust lastProp
-    _ -> True
+  case step of
+    ApplyRule p rule ->
+      let errMsg = "Cannot derive " ++ show p ++ " via " ++ show rule
+       in checkRule (mkFinder kb) p rule >>= checkCond errMsg
+    EndAssumption ->
+      let errMsg = "Pop on an empty stack on EndAssumption"
+       in checkCond errMsg (not (null assumptions) && isJust lastProp)
+    _ -> pure ()
 
   -- update knowledgebase
   let checker' = case step of
@@ -173,10 +180,10 @@ stepChecker checker@Checker {premises = premises, assumptions = assumptions, lin
         EndAssumption -> Nothing
   return checker' {lastProp = last, lineNum = lineNum + 1}
 
-maybeToExcept :: (Monad m) => Maybe a -> ExceptT () m a
-maybeToExcept (Just x) = ExceptT . pure $ Right x
-maybeToExcept Nothing = ExceptT . pure $ Left ()
+maybeToExcept :: (Monad m) => Maybe a -> Err -> ExceptT Err m a
+maybeToExcept (Just x) _ = ExceptT . pure $ Right x
+maybeToExcept Nothing err = ExceptT . pure $ Left err
 
-orFalse :: Maybe Bool -> Bool
-orFalse (Just True) = True
-orFalse _ = False
+checkCond :: Err -> Bool -> WithLogMayFail ()
+checkCond _ True = pure ()
+checkCond err False = ExceptT . pure $ Left err
