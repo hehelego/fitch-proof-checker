@@ -42,6 +42,12 @@ instance Show StepRef where
   show (SingleRef i) = show i
   show (BlockRef i j) = "[" ++ show i ++ ", " ++ show j ++ "]"
 
+-- check if a step is local to a block
+inScope :: StepRef -> StepRef -> Bool
+inScope (BlockRef l r) (SingleRef i) = l <= i && i <= r
+inScope (BlockRef l r) (BlockRef l' r') = l <= l' && r' <= r
+inScope (SingleRef _) _ = error "inScope: the scope must be a block range"
+
 data Step
   = AddPremise Prop
   | Assume Prop

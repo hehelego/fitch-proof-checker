@@ -163,7 +163,8 @@ stepChecker checker@Checker {premises = premises, assumptions = assumptions, lin
               Just derived = lastProp
               block = BlockRef i lineNum
               derv = ValidDerv assumed derived
-           in checker {assumptions = assumptions', kb = (block, derv) : kb}
+              kb' = filter (not . inScope block . fst) kb
+           in checker {assumptions = assumptions', kb = (block, derv) : kb'}
   -- last checked formula
   let last = case step of
         AddPremise p -> Just p
