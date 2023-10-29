@@ -35,3 +35,12 @@ EndAssumption
 Derive p OR q OR r Intr_Disj 2
 ```
 
+## 5.fitch
+
+Incorrect rule application
+
+- $p\vdash p \land q$
+- expected result:
+    - parser correctly
+    - valid structure
+    - incorrect proof
