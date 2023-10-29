@@ -28,7 +28,7 @@ check proof =
   if checkProofSyntax proof
     then
       let (mbck, log) = runWriter $ runExceptT $ checkProof proof
-       in case mbck of
-            Right _ -> putStrLn "Correct proof" >> putStrLn log
+       in putStrLn log >> case mbck of
+            Right _ -> putStrLn "Correct proof"
             Left err -> putStr "Incorrect proof: " >> print err
     else putStrLn "Invalid proof syntax"
