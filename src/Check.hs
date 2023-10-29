@@ -3,7 +3,7 @@ module Check (checkProof, checkProofSyntax) where
 import Control.Monad.Except
 import Control.Monad.Writer
 import Data.List (uncons)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Debug.Trace (trace)
 import Proof
 import Prop
@@ -111,7 +111,7 @@ checkRule kb p rule = orFalse $ case rule of
 
 type Err = ()
 
-type WithLogMayFail = ExceptT Err (Writer [String])
+type WithLogMayFail = ExceptT Err (Writer String)
 
 -- Check proof validity: whetheer every rule application is correct
 checkProof :: Proof -> WithLogMayFail Checker
@@ -133,68 +133,44 @@ checkProofSyntax (Proof steps) = premiseFirst && assumptionMatch
     isPrem (AddPremise _) = True
     isPrem _ = False
 
-logStep :: Checker -> Step -> WithLogMayFail ()
-logStep checker step = tell [replicate m ' ' ++ "Line " ++ show n ++ ": " ++ show step]
+logLine :: Checker -> WithLogMayFail ()
+logLine checker = label >> indent >> tell " "
   where
-    m = 8 * length (assumptions checker)
-    n = lineNum checker
-
-logStep' :: Checker -> StepRef -> Knowledge -> WithLogMayFail ()
-logStep' checker blk derv = tell [replicate m ' ' ++ show blk ++ " " ++ show derv]
-  where
-    m = 8 * length (assumptions checker) - 8
-    n = lineNum checker - 1
+    indent = tell $ replicate level '\t'
+    level = length (assumptions checker)
+    label = tell "L" >> tell (show line)
+    line = lineNum checker
 
 stepChecker :: Checker -> Step -> WithLogMayFail Checker
-stepChecker checker@Checker {premises = _premises, assumptions = _assumptions, lineNum = _lineNum, lastProp = _lastProp, kb = _kb} step = case step of
-  AddPremise p ->
-    do
-      logStep checker step
-      return
-        checker
-          { premises = p : _premises,
-            kb = (SingleRef _lineNum, ValidProp p) : _kb
-          }
-          { lineNum = _lineNum + 1,
-            lastProp = Just p
-          }
-  Assume p ->
-    do
-      logStep checker step
-      return
-        checker
-          { assumptions = (p, _lineNum) : _assumptions,
-            kb = (SingleRef _lineNum, ValidProp p) : _kb
-          }
-          { lineNum = _lineNum + 1,
-            lastProp = Just p
-          }
-  ApplyRule p rule ->
-    do
-      let kbfind i = lookup i (kb checker)
-      guard $ checkRule kbfind p rule
-      logStep checker step
-      return
-        checker
-          { kb = (SingleRef _lineNum, ValidProp p) : _kb
-          }
-          { lineNum = _lineNum + 1,
-            lastProp = Just p
-          }
-  EndAssumption ->
-    do
-      ((assumed, i), assumptions') <- maybeToExcept $ uncons _assumptions
-      derived <- maybeToExcept _lastProp
-      let blk = BlockRef i _lineNum; derv = ValidDerv assumed derived
-      logStep' checker blk derv
-      return
-        checker
-          { assumptions = assumptions',
-            kb = (blk, derv) : _kb
-          }
-          { lineNum = _lineNum + 1,
-            lastProp = Nothing
-          }
+stepChecker checker@Checker {premises = premises, assumptions = assumptions, lineNum = lineNum, lastProp = lastProp, kb = kb} step = do
+  logLine checker
+  tell (show step)
+  tell "\n"
+
+  -- check validity
+  guard $ case step of
+    ApplyRule p rule -> let kbfind i = lookup i kb in checkRule kbfind p rule
+    EndAssumption -> not (null assumptions) && isJust lastProp
+    _ -> True
+
+  -- update knowledgebase
+  let checker' = case step of
+        AddPremise p -> checker {premises = p : premises, kb = (SingleRef lineNum, ValidProp p) : kb}
+        Assume p -> checker {assumptions = (p, lineNum) : assumptions, kb = (SingleRef lineNum, ValidProp p) : kb}
+        ApplyRule p rule -> checker {kb = (SingleRef lineNum, ValidProp p) : kb}
+        EndAssumption ->
+          let ((assumed, i) : assumptions') = assumptions
+              Just derived = lastProp
+              block = BlockRef i lineNum
+              derv = ValidDerv assumed derived
+           in checker {assumptions = assumptions', kb = (block, derv) : kb}
+  -- last checked formula
+  let last = case step of
+        AddPremise p -> Just p
+        Assume p -> Just p
+        ApplyRule p _ -> Just p
+        EndAssumption -> Nothing
+  return checker' {lastProp = last, lineNum = lineNum + 1}
 
 maybeToExcept :: (Monad m) => Maybe a -> ExceptT () m a
 maybeToExcept (Just x) = ExceptT . pure $ Right x
