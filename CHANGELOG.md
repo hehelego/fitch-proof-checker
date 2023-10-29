@@ -8,3 +8,9 @@
 
 * Implement a simple and naive parser for fitch notation
 * Add two example proofs
+
+## 0.3.0.0 -- 2023-10-29
+
+* Add error message and log on check failure
+* Bug fix: scope visibility is now correctly enfoced
+* Add 4 test cases
