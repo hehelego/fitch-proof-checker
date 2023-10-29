@@ -18,7 +18,7 @@ To check a proof, run `cabal run fitch-proof-checker -- proofs/file.fitch`
     - valid structure
     - correct proof
 
-## 3.fitch
+## 3.fitch 4.fitch
 
 - $\vdash p \lor q \lor r$
 - expected result:
