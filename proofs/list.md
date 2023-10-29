@@ -28,6 +28,8 @@ To check a proof, run `cabal run fitch-proof-checker -- proofs/file.fitch`
 
 **bug**: failed enforce block visibility
 
+**fixed**: Commit `fc7529d7fe762943a0600603d631722e3b8a7f89`
+
 ```
 Assume p
     Derive p OR q  Intr_Disj 1
