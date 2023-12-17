@@ -21,7 +21,7 @@ main = do
         else putStrLn "Cannot parse the entire file:" >> putStrLn unparsed
 
 showProof :: Proof -> IO ()
-showProof (Proof steps) = putStrLn "BEGIN PROOF" >> mapM_ print steps >> putStrLn "END PROOF"
+showProof steps = putStrLn "BEGIN PROOF" >> mapM_ print steps >> putStrLn "END PROOF"
 
 check :: Proof -> IO ()
 check proof =

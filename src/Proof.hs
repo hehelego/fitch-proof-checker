@@ -1,6 +1,22 @@
-module Proof where
+module Proof
+  ( Rule (ConjI, ConjE, DisjI, DisjE, ImplE, NegI, BotI, BotE, NegNegI, NegNegE),
+    StepRef,
+    Step (AddPremise, IntrAsump, ElimAsump, ApplyRule),
+    Proof,
+    Builder,
+    addPremise,
+    applyRule,
+    intrAsump,
+    elimAsump,
+    endProof,
+    build,
+  )
+where
 
-import Prop (Prop)
+import Control.Monad.State.Lazy
+import Control.Monad.Writer.Lazy
+import Data.Functor
+import Prop (Prop (Atom))
 
 -- These notations come from section 1.2.3 of the book `Logic in Computer Science`
 -- @book{huth2004logic,
@@ -14,7 +30,6 @@ data Rule
   | ConjE StepRef -- conjunction elimination
   | DisjI StepRef -- disjunction introduction
   | DisjE StepRef StepRef StepRef -- disjunction elimination
-  | ImplI StepRef -- implication introduction
   | ImplE StepRef StepRef -- implication elimination
   | NegI StepRef -- negation introduction
   | BotI StepRef StepRef -- bottom introduction
@@ -28,7 +43,6 @@ instance Show Rule where
   show (ConjE pq) = "[∧e: " ++ show pq ++ "]"
   show (DisjI p_q) = "[∨i: " ++ show p_q ++ "]"
   show (DisjE pq p_x q_x) = "[∨e: " ++ show pq ++ ", " ++ show p_x ++ ", " ++ show q_x ++ "]"
-  show (ImplI p_q) = "[→i: " ++ show p_q ++ "]"
   show (ImplE p p_q) = "[→e: " ++ show p ++ ", " ++ show p_q ++ "]"
   show (NegI p_bot) = "[¬i: " ++ show p_bot ++ "]"
   show (BotI p not_p) = "[⊥ i: " ++ show p ++ ", " ++ show not_p ++ "]"
@@ -36,29 +50,46 @@ instance Show Rule where
   show (NegNegI p) = "[¬¬e: " ++ show p ++ "]"
   show (NegNegE nnp) = "[¬¬i: " ++ show nnp ++ "]"
 
-data StepRef = SingleRef Int | BlockRef Int Int deriving (Eq, Ord)
-
-instance Show StepRef where
-  show (SingleRef i) = show i
-  show (BlockRef i j) = "[" ++ show i ++ ", " ++ show j ++ "]"
-
--- check if a step is local to a block
-inScope :: StepRef -> StepRef -> Bool
-inScope (BlockRef l r) (SingleRef i) = l <= i && i <= r
-inScope (BlockRef l r) (BlockRef l' r') = l <= l' && r' <= r
-inScope (SingleRef _) _ = error "inScope: the scope must be a block range"
+type StepRef = Int
 
 data Step
   = AddPremise Prop
-  | Assume Prop
-  | EndAssumption
+  | IntrAsump Prop
+  | ElimAsump Prop
   | ApplyRule Prop Rule
   deriving (Eq)
 
 instance Show Step where
   show (AddPremise p) = "Premise " ++ show p
-  show (Assume p) = "Assume " ++ show p
-  show EndAssumption = "EndAssumption"
+  show (IntrAsump p) = "Assume " ++ show p
+  show (ElimAsump p) = "Derive " ++ show p ++ "with assumptions"
   show (ApplyRule p r) = "Deduce " ++ show p ++ " " ++ show r
 
-newtype Proof = Proof [Step]
+type Proof = [Step]
+
+-- Builder: accumulate steps & count line number
+type Builder = WriterT [Step] (State Int) Int
+
+continue :: Step -> Builder
+continue s = do
+  tell [s]
+  ln <- get
+  return $ 1 + ln
+
+addPremise :: Prop -> Builder
+addPremise p = continue $ AddPremise p
+
+applyRule :: Prop -> Rule -> Builder
+applyRule p rule = continue $ ApplyRule p rule
+
+intrAsump :: Prop -> Builder
+intrAsump p = continue $ IntrAsump p
+
+elimAsump :: Prop -> Builder
+elimAsump p = continue $ ElimAsump p
+
+endProof :: Builder
+endProof = pure 0
+
+build :: Builder -> Proof
+build builder = snd $ evalState (runWriterT builder) 0

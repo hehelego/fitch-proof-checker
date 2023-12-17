@@ -2,96 +2,36 @@ module Check (checkProof, checkProofSyntax) where
 
 import Control.Monad.Except
 import Control.Monad.Writer
-import Data.List (uncons)
+import Data.List (find, uncons)
 import Data.Maybe (fromMaybe, isJust)
 import Debug.Trace (trace)
 import Proof
 import Prop
+import Rules
 
-data Knowledge
-  = ValidProp Prop -- this proposition follows from the premises
-  | ValidDerv Prop Prop -- this derivation is valid given the premises
-  deriving (Eq)
+-- a piece of knowledge is a proved proposition, possibly within certain context
+type Knowledge = Prop
 
-instance Show Knowledge where
-  show (ValidProp p) = "Checked " ++ show p
-  show (ValidDerv p q) = "Checked " ++ show p ++ " entails " ++ show q
+-- Line number
+type LineNumber = Int
+
+-- referring to a context block. If CTX-A < CTX-B, then CTX-B should be a sub-context of CTX-A
+type Context = Int
 
 -- knowledge base
-type KB = [(StepRef, Knowledge)]
+type KB = [(Context, LineNumber, Knowledge)]
 
 data Checker = Checker
-  { premises :: [Prop], -- the premises
-    assumptions :: [(Prop, Int)], -- currently visible assumptions: (assumed proposition, line number)
-    lineNum :: Int, -- current line, count `AddPremise`, `Assume`, `EndAssumption`, and `ApplyRule`.
-    lastProp :: Maybe Prop, -- last proposition line `AddPremise`, `Assume`, and `ApplyRule`.
-    kb :: KB -- checked steps in current state
+  { prems :: [Prop], -- the premises
+    asumps :: [Prop], -- currently visible assumptions
+    ctx :: Context, -- context level, +1 on Assumption introduction, -1 on Assumption elimination
+    ln :: LineNumber, -- line number
+    kb :: KB -- proved proposition in scope knowledge
   }
   deriving (Show)
 
 initChecker :: Checker
-initChecker =
-  Checker
-    { premises = [],
-      assumptions = [],
-      lineNum = 1,
-      lastProp = Nothing,
-      kb = []
-    }
-
--- conjunction introduction
-conjI :: Prop -> Knowledge -> Knowledge -> Bool
-conjI (p `And` q) (ValidProp p') (ValidProp q') = p == p' && q == q'
-conjI _ _ _ = False
-
--- conjunction elimination
-conjE :: Prop -> Knowledge -> Bool
-conjE r (ValidProp (p `And` q)) = r == p || r == q
-conjE _ _ = False
-
--- disjunction introduction
-disjI :: Prop -> Knowledge -> Bool
-disjI (p `Or` q) (ValidProp r) = p == r || q == r
-disjI _ _ = False
-
--- disjunction elimination
-disjE :: Prop -> Knowledge -> Knowledge -> Knowledge -> Bool
-disjE x (ValidProp (p `Or` q)) (ValidDerv p' px) (ValidDerv q' qx) = p == p' && q == q' && x == px && x == qx
-disjE _ _ _ _ = False
-
--- implication introduction
-implI :: Prop -> Knowledge -> Bool
-implI (p `Impl` q) (ValidDerv p' q') = p == p' && q == q'
-implI _ _ = False
-
--- implication elimination
-implE :: Prop -> Knowledge -> Knowledge -> Bool
-implE q (ValidProp p) (ValidProp (p' `Impl` q')) = p == p' && q == q'
-implE _ _ _ = False
-
--- negation introduction
-negI :: Prop -> Knowledge -> Bool
-negI (Not p) (ValidDerv p' Bottom) = p == p'
-negI _ _ = False
-
--- bottom introduction
-botI :: Prop -> Knowledge -> Knowledge -> Bool
-botI Bottom (ValidProp p) (ValidProp (Not p')) = p == p'
-botI _ _ _ = False
-
--- bottom elimination
-botE _ (ValidProp Bottom) = True
-botE _ _ = False
-
--- double negation introduction
-negnegI :: Prop -> Knowledge -> Bool
-negnegI (Not (Not p)) (ValidProp p') = p == p'
-negnegI _ _ = False
-
--- double negation elimination
-negnegE :: Prop -> Knowledge -> Bool
-negnegE p (ValidProp (Not (Not p'))) = p == p'
-negnegE _ _ = False
+initChecker = Checker {prems = [], asumps = [], ctx = 0, ln = 1, kb = []}
 
 type Err = String
 
@@ -100,38 +40,42 @@ type WithLogMayFail = ExceptT Err (Writer String)
 type KBFinder = StepRef -> WithLogMayFail Knowledge
 
 mkFinder :: KB -> KBFinder
-mkFinder kb i = maybeToExcept (lookup i kb) ("Cannot find " ++ show i ++ " in " ++ show kb)
+mkFinder kb i = _3rd <$> maybeToExcept findRes errMsg
+  where
+    _3rd (_, _, x) = x
+    findCond (_, l, p) = i == l
+    findRes = find findCond kb
+    errMsg = "Cannot find " ++ show i ++ " in " ++ show kb
 
 checkRule :: KBFinder -> Prop -> Rule -> WithLogMayFail Bool
 checkRule kb p rule = case rule of
-  ConjI i j -> conjI p <$> kb i <*> kb j
-  ConjE i -> conjE p <$> kb i
-  DisjI i -> disjI p <$> kb i
-  DisjE i j k -> disjE p <$> kb i <*> kb j <*> kb k
-  ImplI i -> implI p <$> kb i
-  ImplE i j -> implE p <$> kb i <*> kb j
-  NegI i -> negI p <$> kb i
-  BotI i j -> botI p <$> kb i <*> kb j
-  BotE i -> botE p <$> kb i
-  NegNegI i -> negnegI p <$> kb i
-  NegNegE i -> negnegE p <$> kb i
+  ConjI i j -> conjI <$> kb i <*> kb j <*> pure p
+  ConjE i -> conjE <$> kb i <*> pure p
+  DisjI i -> disjI <$> kb i <*> pure p
+  DisjE i j k -> disjE <$> kb i <*> kb j <*> kb k <*> pure p
+  ImplE i j -> implE <$> kb i <*> kb j <*> pure p
+  NegI i -> negI <$> kb i <*> pure p
+  BotI i j -> botI <$> kb i <*> kb j <*> pure p
+  BotE i -> botE <$> kb i <*> pure p
+  NegNegI i -> negnegI <$> kb i <*> pure p
+  NegNegE i -> negnegE <$> kb i <*> pure p
 
--- Check proof validity: whetheer every rule application is correct
+-- Check proof validity: whether every rule application is correct
 checkProof :: Proof -> WithLogMayFail Checker
-checkProof (Proof steps) = foldM stepChecker initChecker steps
+checkProof = foldM stepChecker initChecker
 
 -- Check proof syntax: proof structure
 --
--- Proof -> Premises Steps
--- Premises -> epsilon | AddPremise Premises
--- Steps -> epsilon | Assume Steps EndAssumption | ApplyRule
+-- Proof -> prems Steps
+-- prems -> epsilon | AddPremise prems
+-- Steps -> epsilon | IntrAsump Steps ElimAsump | ApplyRule Steps
 checkProofSyntax :: Proof -> Bool
-checkProofSyntax (Proof steps) = premiseFirst && assumptionMatch
+checkProofSyntax steps = premiseFirst && assumptionMatch
   where
     premiseFirst = not $ any isPrem $ dropWhile isPrem steps
     assumptionMatch = (0, 0) == foldl matchIter (0, 0) steps
-    matchIter (m, e) (Assume _) = (m, e + 1)
-    matchIter (m, e) EndAssumption = (min m (e - 1), e - 1)
+    matchIter (m, e) (IntrAsump _) = (m, e + 1)
+    matchIter (m, e) (ElimAsump _) = (min m (e - 1), e - 1)
     matchIter me _ = me
     isPrem (AddPremise _) = True
     isPrem _ = False
@@ -140,12 +84,12 @@ logLine :: Checker -> WithLogMayFail ()
 logLine checker = label >> indent >> tell " "
   where
     indent = tell $ replicate level '\t'
-    level = length (assumptions checker)
+    level = length (asumps checker)
     label = tell "L" >> tell (show line)
-    line = lineNum checker
+    line = ln checker
 
 stepChecker :: Checker -> Step -> WithLogMayFail Checker
-stepChecker checker@Checker {premises = premises, assumptions = assumptions, lineNum = lineNum, lastProp = lastProp, kb = kb} step = do
+stepChecker checker@Checker {prems = prems, asumps = asumps, ctx = ctx, ln = ln, kb = kb} step = do
   logLine checker
   tell (show step)
   tell "\n"
@@ -155,30 +99,25 @@ stepChecker checker@Checker {premises = premises, assumptions = assumptions, lin
     ApplyRule p rule ->
       let errMsg = "Cannot derive " ++ show p ++ " via " ++ show rule
        in checkRule (mkFinder kb) p rule >>= checkCond errMsg
-    EndAssumption ->
-      let errMsg = "Pop on an empty stack on EndAssumption"
-       in checkCond errMsg (not (null assumptions) && isJust lastProp)
+    ElimAsump p ->
+      let errMsg = "Never derived " ++ show p ++ "in current context"
+          match (ctx', _, p') = ctx' == ctx && p' == p
+          matched = isJust $ find match kb
+       in checkCond errMsg matched
     _ -> pure ()
 
-  -- update knowledgebase
+  -- update knowledge base
   let checker' = case step of
-        AddPremise p -> checker {premises = p : premises, kb = (SingleRef lineNum, ValidProp p) : kb}
-        Assume p -> checker {assumptions = (p, lineNum) : assumptions, kb = (SingleRef lineNum, ValidProp p) : kb}
-        ApplyRule p rule -> checker {kb = (SingleRef lineNum, ValidProp p) : kb}
-        EndAssumption ->
-          let ((assumed, i) : assumptions') = assumptions
-              Just derived = lastProp
-              block = BlockRef i lineNum
-              derv = ValidDerv assumed derived
-              kb' = filter (not . inScope block . fst) kb
-           in checker {assumptions = assumptions', kb = (block, derv) : kb'}
-  -- last checked formula
-  let last = case step of
-        AddPremise p -> Just p
-        Assume p -> Just p
-        ApplyRule p _ -> Just p
-        EndAssumption -> Nothing
-  return checker' {lastProp = last, lineNum = lineNum + 1}
+        AddPremise p -> checker {prems = p : prems, kb = (0, ln, p) : kb}
+        ApplyRule p rule -> checker {kb = (ctx, ln, p) : kb}
+        IntrAsump p -> checker {asumps = p : asumps, kb = (ctx + 1, ln, p) : kb, ctx = ctx + 1}
+        ElimAsump p ->
+          let (a : asumps') = asumps
+              p' = a `Impl` p
+              curCtx (ctx', _, _) = ctx' == ctx
+              kb' = dropWhile curCtx kb
+           in checker {asumps = asumps', kb = (ctx - 1, ln, p') : kb', ctx = ctx - 1}
+  pure checker' {ln = ln + 1}
 
 maybeToExcept :: (Monad m) => Maybe a -> Err -> ExceptT Err m a
 maybeToExcept (Just x) _ = ExceptT . pure $ Right x
