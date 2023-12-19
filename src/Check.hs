@@ -69,8 +69,26 @@ checkProof = foldM stepChecker initChecker
 -- Proof -> prems Steps
 -- prems -> epsilon | AddPremise prems
 -- Steps -> epsilon | IntrAsump Steps ElimAsump | ApplyRule Steps
-checkProofSyntax :: Proof -> Bool
-checkProofSyntax steps = premiseFirst && assumptionMatch
+checkProofSyntax :: Proof -> WithLogMayFail ()
+checkProofSyntax steps = premFst >> asElim
+  where
+    premFst = do
+      let isPrem step = case step of AddPremise _ -> True; _ -> False
+      let body = dropWhile isPrem steps
+      let ok = not $ any isPrem body
+      let msg = "Syntax Error: Premises can only introduced at the beginning"
+      checkCond msg ok
+    asElim = do
+      let ok = pairup == Just 0
+      let msg = "Syntax Error: Assumption introductions-eliminations must be matched"
+      checkCond msg ok
+    pairup = foldM f 0 steps
+      where
+        f cnt (IntrAsump _) = Just $ cnt + 1
+        f cnt (ElimAsump _) = if cnt > 0 then Just $ cnt - 1 else Nothing
+        f cnt _ = Just cnt
+
+r steps = premiseFirst && assumptionMatch
   where
     premiseFirst = not $ any isPrem $ dropWhile isPrem steps
     assumptionMatch = (0, 0) == foldl matchIter (0, 0) steps
