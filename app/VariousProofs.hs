@@ -108,16 +108,21 @@ showPF = mapM_ print
 
 checkPF :: Proof -> IO ()
 checkPF proof =
-  if checkProofSyntax proof
-    then
-      let (mbck, log) = runWriter $ runExceptT $ checkProof proof
-       in putStrLn log >> case mbck of
-            Right _ -> putStrLn "Correct"
-            Left err -> putStr "Wrong:  " >> putStrLn err
-    else putStrLn "Syntax Error"
+  putStrLn log >> case ck of
+    Right _ -> putStrLn "Correct"
+    Left err -> putStr "Wrong" >> putStrLn err
+  where
+    run = runWriter . runExceptT
+    (ck, log) = run $ checkProofSyntax proof >> checkProof proof
 
 main :: IO ()
 main = do
+  runTests
+    [ test "syntax-wrong-1" [IntrAsump p],
+      test "syntax-wrong-2" [ElimAsump p],
+      test "syntax-wrong-3" [ApplyRule p (BotE 1), AddPremise p]
+    ]
+
   putStrLn "## BEGIN Examples ##"
   runTests examples
   putStrLn "## END Examples ##"
