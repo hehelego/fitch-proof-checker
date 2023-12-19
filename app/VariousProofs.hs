@@ -94,8 +94,88 @@ eg8b =
       ApplyRule (Not p) $ NegI 7
     ]
 
+eg9 =
+  test
+    "Example 1.9"
+    [ AddPremise $ Not q `Impl` Not p,
+      IntrAsump p,
+      IntrAsump $ Not q,
+      ApplyRule (Not p) $ ImplE 3 1,
+      ApplyRule Bottom $ BotI 2 4,
+      ElimAsump Bottom,
+      ApplyRule (nn q) $ NegI 6,
+      ElimAsump $ nn q
+    ]
+
+egOneline = test "Identity Law" [IntrAsump p, ElimAsump p]
+
+eg11 =
+  test
+    "Example 1.11"
+    [ IntrAsump $ q `Impl` r,
+      IntrAsump $ Not q `Impl` Not p,
+      IntrAsump p,
+      IntrAsump $ Not q,
+      ApplyRule (Not p) $ ImplE 4 2,
+      ApplyRule Bottom $ BotI 3 5,
+      ElimAsump Bottom,
+      ApplyRule (nn q) $ NegI 7,
+      ApplyRule q $ NegNegE 8,
+      ApplyRule r $ ImplE 9 1,
+      ElimAsump r,
+      ElimAsump $ p `Impl` r,
+      ElimAsump $ (Not q `Impl` Not p) `Impl` (p `Impl` r)
+    ]
+
+eg13 =
+  test
+    "Example 1.13"
+    [ AddPremise $ (p `And` q) `Impl` r,
+      IntrAsump p,
+      IntrAsump q,
+      ApplyRule (p `And` q) $ ConjI 2 3,
+      ApplyRule r $ ImplE 4 1,
+      ElimAsump r,
+      ElimAsump $ q `Impl` r
+    ]
+
+eg14 =
+  test
+    "Example 1.14"
+    [ AddPremise $ p `Impl` (q `Impl` r),
+      IntrAsump $ p `And` q,
+      ApplyRule p $ ConjE 2,
+      ApplyRule q $ ConjE 2,
+      ApplyRule (q `Impl` r) $ ImplE 3 1,
+      ApplyRule r $ ImplE 4 5,
+      ElimAsump r
+    ]
+
+-- TODO: complete examples
+eg15 = test "Example 1.15" undefined
+
+eg16 = test "Example 1.16" undefined
+
+eg17 = test "Example 1.17" undefined
+
+eg18 = test "Example 1.18" undefined
+
+eg20 = test "Example 1.20" undefined
+
+eg21 = test "Example 1.21" undefined
+
+eg22 = test "Example 1.22" undefined
+
+eg23 = test "Example 1.23" undefined
+
+eg24 = test "Example 1.24" undefined
+
+eg29 = test "Example 1.29" undefined
+
 -- examples
-examples = [eg4, eg5, eg6, eg7, eg8a, eg8b]
+examples = [eg4, eg5, eg6, eg7, eg8a, eg8b, eg9, egOneline, eg11, eg13, eg14, eg15, eg16, eg17, eg18, eg20, eg21, eg22, eg23, eg24, eg29]
+
+-- TODO: exercises
 
 -- exercises
 exercises = []
