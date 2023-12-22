@@ -17,18 +17,17 @@ main = do
     Left err -> print err
     Right (proof, unparsed) ->
       if null unparsed
-        then showProof proof >> check proof
+        then showPF proof >> checkPF proof
         else putStrLn "Cannot parse the entire file:" >> putStrLn unparsed
 
-showProof :: Proof -> IO ()
-showProof steps = putStrLn "BEGIN PROOF" >> mapM_ print steps >> putStrLn "END PROOF"
+showPF :: Proof -> IO ()
+showPF = mapM_ print
 
-check :: Proof -> IO ()
-check proof =
-  if checkProofSyntax proof
-    then
-      let (mbck, log) = runWriter $ runExceptT $ checkProof proof
-       in putStrLn log >> case mbck of
-            Right _ -> putStrLn "Correct proof"
-            Left err -> putStr "Incorrect proof: " >> putStrLn err
-    else putStrLn "Invalid proof syntax"
+checkPF :: Proof -> IO ()
+checkPF proof =
+  putStrLn log >> case ck of
+    Right _ -> putStrLn "Correct"
+    Left err -> putStr "Wrong" >> putStrLn err
+  where
+    run = runWriter . runExceptT
+    (ck, log) = run $ checkProofSyntax proof >> checkProof proof

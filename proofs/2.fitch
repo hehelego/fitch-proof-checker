@@ -1,5 +1,5 @@
-Premise [0] IMPL [1]
-Premise NOT ([0] IMPL [1])
-Derive BOTTOM                       Intr_Bot 1 2
-Derive [0] OR NOT [0]               Elim_Bot 3
-Derive BOTTOM AND ([0] OR NOT [0])  Intr_Conj 3 4
+Premise [0] -> [1]
+Premise ~([0] -> [1])
+Derive BOT                          Ibot 1 2
+Derive [0] \/ ~[0]                  Ebot 3
+Derive BOT /\ ([0] \/ ~[0])         Iconj 3 4

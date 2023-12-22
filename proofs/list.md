@@ -30,13 +30,6 @@ To check a proof, run `cabal run fitch-proof-checker -- proofs/file.fitch`
 
 **fixed**: Commit `fc7529d7fe762943a0600603d631722e3b8a7f89`
 
-```
-Assume p
-    Derive p OR q  Intr_Disj 1
-EndAssumption
-Derive p OR q OR r Intr_Disj 2
-```
-
 ## 5.fitch
 
 Incorrect rule application

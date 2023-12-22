@@ -99,8 +99,8 @@ propP = chainl1 term impl
   where
     term = chainl1 factor andor
     factor = between (symbol "(") (symbol ")") propP <|> notP <|> atom
-    impl = symbol "IMPL" $> Impl
-    andor = symbol "AND" $> And <|> symbol "OR" $> Or
+    impl = symbol "->" $> Impl
+    andor = symbol "/\\" $> And <|> symbol "\\/" $> Or
     atom = token $ bottomP <|> atomP
 
 atomP :: Parser Prop
@@ -109,25 +109,25 @@ atomP = Atom <$> surrounded intP
     surrounded = between (char '[') (char ']')
 
 bottomP :: Parser Prop
-bottomP = Bottom <$ symbol "BOTTOM"
+bottomP = Bottom <$ symbol "BOT"
 
 notP :: Parser Prop
-notP = Not <$> (symbol "NOT" *> propP)
+notP = Not <$> (symbol "~" *> propP)
 
 refP :: Parser StepRef
 refP = token intP
 
 ruleP =
-  symbol "Intr_Conj" *> (ConjI <$> refP <*> refP)
-    <|> symbol "Elim_Conj" *> (ConjE <$> refP)
-    <|> symbol "Intr_Disj" *> (DisjI <$> refP)
-    <|> symbol "Elim_Disj" *> (DisjE <$> refP <*> refP <*> refP)
-    <|> symbol "Elim_Impl" *> (ImplE <$> refP <*> refP)
-    <|> symbol "Intr_Neg" *> (NegI <$> refP)
-    <|> symbol "Intr_Bot" *> (BotI <$> refP <*> refP)
-    <|> symbol "Elim_Bot" *> (BotE <$> refP)
-    <|> symbol "Intr_Negneg" *> (NegNegI <$> refP)
-    <|> symbol "Elim_Negneg" *> (NegNegE <$> refP)
+  symbol "Iconj" *> (ConjI <$> refP <*> refP)
+    <|> symbol "Econj" *> (ConjE <$> refP)
+    <|> symbol "Idisj" *> (DisjI <$> refP)
+    <|> symbol "Edisj" *> (DisjE <$> refP <*> refP <*> refP)
+    <|> symbol "Eimpl" *> (ImplE <$> refP <*> refP)
+    <|> symbol "Ineg" *> (NegI <$> refP)
+    <|> symbol "Ibot" *> (BotI <$> refP <*> refP)
+    <|> symbol "Ebot" *> (BotE <$> refP)
+    <|> symbol "Inn" *> (NegNegI <$> refP)
+    <|> symbol "Enn" *> (NegNegE <$> refP)
     <|> fail "unrecognized inference rule"
 
 proofP :: Parser Proof
@@ -136,7 +136,7 @@ proofP = many $ step <* eol
     step = premiseP <|> deriveP <|> asumeP <|> endAssumeP
     premiseP = AddPremise <$> (symbol "Premise" *> token propP)
     deriveP = ApplyRule <$> (symbol "Derive" *> token propP) <*> ruleP
-    asumeP = IntrAsump <$> (symbol "Intr-Asump" *> token propP)
-    endAssumeP = ElimAsump <$> (symbol "Elim-Asump" *> token propP)
+    asumeP = IntrAsump <$> (symbol "Intr" *> token propP)
+    endAssumeP = ElimAsump <$> (symbol "Elim" *> token propP)
 
 eol = spaces <* char '\n'

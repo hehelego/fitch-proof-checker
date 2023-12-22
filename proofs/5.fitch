@@ -1,2 +1,2 @@
 Premise [0]
-Derive [0] AND [1] Intr_Disj 1
+Derive [0] /\ [1]       Idisj 1
