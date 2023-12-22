@@ -119,7 +119,7 @@ stepChecker checker@Checker {prems = prems, asumps = asumps, ctx = ctx, ln = ln,
        in checkRule (mkFinder kb) p rule >>= checkCond errMsg
     ElimAsump p ->
       let errMsg = "Never derived " ++ show p ++ "in current context"
-          match (ctx', _, p') = ctx' == ctx && p' == p
+          match (ctx', _, p') = ctx' <= ctx && p' == p
           matched = isJust $ find match kb
        in checkCond errMsg matched
     _ -> pure ()
