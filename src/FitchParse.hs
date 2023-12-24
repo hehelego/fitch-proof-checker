@@ -3,8 +3,9 @@ module FitchParse where
 import Control.Applicative (Alternative (empty, many, some, (<|>)))
 import Control.Monad (guard)
 import Data.Functor (($>), (<$), (<$>))
-import Proof (Proof (..), Rule (..), Step (..), StepRef (..))
+import Proof (Arity0Rule (..), Arity1Rule (..), Arity2Rule (..), Arity3Rule (..), Proof (..), RuleApp (..), Step (..), StepRef (..))
 import Prop (Prop (..))
+import Rules
 
 newtype Parser a = Parser {runParser :: String -> Either String (a, String)}
 
@@ -118,16 +119,16 @@ refP :: Parser StepRef
 refP = token intP
 
 ruleP =
-  symbol "Iconj" *> (ConjI <$> refP <*> refP)
-    <|> symbol "Econj" *> (ConjE <$> refP)
-    <|> symbol "Idisj" *> (DisjI <$> refP)
-    <|> symbol "Edisj" *> (DisjE <$> refP <*> refP <*> refP)
-    <|> symbol "Eimpl" *> (ImplE <$> refP <*> refP)
-    <|> symbol "Ineg" *> (NegI <$> refP)
-    <|> symbol "Ibot" *> (BotI <$> refP <*> refP)
-    <|> symbol "Ebot" *> (BotE <$> refP)
-    <|> symbol "Inn" *> (NegNegI <$> refP)
-    <|> symbol "Enn" *> (NegNegE <$> refP)
+  symbol "Iconj" *> (conjI <$> refP <*> refP)
+    <|> symbol "Econj" *> (conjE <$> refP)
+    <|> symbol "Idisj" *> (disjI <$> refP)
+    <|> symbol "Edisj" *> (disjE <$> refP <*> refP <*> refP)
+    <|> symbol "Eimpl" *> (implE <$> refP <*> refP)
+    <|> symbol "Ineg" *> (negI <$> refP)
+    <|> symbol "Ibot" *> (botI <$> refP <*> refP)
+    <|> symbol "Ebot" *> (botE <$> refP)
+    <|> symbol "Inn" *> (negnegI <$> refP)
+    <|> symbol "Enn" *> (negnegE <$> refP)
     <|> fail "unrecognized inference rule"
 
 proofP :: Parser Proof

@@ -2,9 +2,8 @@ module Check (checkProof, checkProofSyntax) where
 
 import Control.Monad.Except
 import Control.Monad.Writer
-import Data.List (find, uncons)
-import Data.Maybe (fromMaybe, isJust)
-import Debug.Trace (trace)
+import Data.List (find)
+import Data.Maybe (isJust)
 import Proof
 import Prop
 import Rules
@@ -47,18 +46,12 @@ mkFinder kb i = _3rd <$> maybeToExcept findRes errMsg
     findRes = find findCond kb
     errMsg = "Cannot find " ++ show i ++ " in " ++ show kb
 
-checkRule :: KBFinder -> Prop -> Rule -> WithLogMayFail Bool
+checkRule :: KBFinder -> Prop -> RuleApp -> WithLogMayFail Bool
 checkRule kb p rule = case rule of
-  ConjI i j -> conjI <$> kb i <*> kb j <*> pure p
-  ConjE i -> conjE <$> kb i <*> pure p
-  DisjI i -> disjI <$> kb i <*> pure p
-  DisjE i j k -> disjE <$> kb i <*> kb j <*> kb k <*> pure p
-  ImplE i j -> implE <$> kb i <*> kb j <*> pure p
-  NegI i -> negI <$> kb i <*> pure p
-  BotI i j -> botI <$> kb i <*> kb j <*> pure p
-  BotE i -> botE <$> kb i <*> pure p
-  NegNegI i -> negnegI <$> kb i <*> pure p
-  NegNegE i -> negnegE <$> kb i <*> pure p
+  A0 (Arity0Rule _ check) -> pure $ check p
+  A1 (Arity1Rule _ check) i -> check <$> kb i <*> pure p
+  A2 (Arity2Rule _ check) i j -> check <$> kb i <*> kb j <*> pure p
+  A3 (Arity3Rule _ check) i j k -> check <$> kb i <*> kb j <*> kb k <*> pure p
 
 -- Check proof validity: whether every rule application is correct
 checkProof :: Proof -> WithLogMayFail Checker

@@ -7,12 +7,13 @@ import Control.Monad.Except
 import Control.Monad.Writer
 import Proof
 import Prop
+import Rules
 
 -- Examples from chapter 1 of the LICS book
--- @book{huth2004logic,
---   title={Logic in Computer Science: Modelling and reasoning about systems},
---   author={Huth, Michael and Ryan, Mark},
---   year={2004},
+-- @book{huth2004logic
+--   title={Logic in Computer Science: Modelling and reasoning about systems}
+--   author={Huth, Michael and Ryan, Mark}
+--   year={2004}
 --   publisher={Cambridge university press}
 -- }
 
@@ -20,322 +21,322 @@ nn p = Not $ Not p
 
 [p, q, r, s, t] = Atom <$> [1 .. 5]
 
-test :: String -> Proof -> (String, Proof)
-test = (,)
+test :: String -> Builder -> (String, Proof)
+test name builder = (name, build builder)
 
 eg4 =
   test
     "Example 1.4"
-    [ AddPremise $ p `And` q,
-      AddPremise r,
-      ApplyRule q $ ConjE 1,
-      ApplyRule (q `And` r) $ ConjI 3 2
-    ]
+    $ do
+      addPremise $ p `And` q
+      addPremise r
+      applyRule q $ conjE 1
+      applyRule (q `And` r) $ conjI 3 2
 
 eg5 =
   test
     "Example 1.5"
-    [ AddPremise p,
-      AddPremise $ nn (q `And` r),
-      ApplyRule (nn p) $ NegNegI 1,
-      ApplyRule (q `And` r) $ NegNegE 2,
-      ApplyRule r $ ConjE 4,
-      ApplyRule (nn p `And` r) $ ConjI 3 5
-    ]
+    $ do
+      addPremise p
+      addPremise $ nn (q `And` r)
+      applyRule (nn p) $ negnegI 1
+      applyRule (q `And` r) $ negnegE 2
+      applyRule r $ conjE 4
+      applyRule (nn p `And` r) $ conjI 3 5
 
 eg6 =
   test
     "Example 1.6"
-    [ AddPremise $ (p `And` q) `And` r,
-      AddPremise $ s `And` t,
-      ApplyRule (p `And` q) $ ConjE 1,
-      ApplyRule q $ ConjE 3,
-      ApplyRule s $ ConjE 2,
-      ApplyRule (q `And` s) $ ConjI 4 5
-    ]
+    $ do
+      addPremise $ (p `And` q) `And` r
+      addPremise $ s `And` t
+      applyRule (p `And` q) $ conjE 1
+      applyRule q $ conjE 3
+      applyRule s $ conjE 2
+      applyRule (q `And` s) $ conjI 4 5
 
 eg7 =
   test
     "Example 1.7"
-    [ AddPremise $ p `Impl` (q `Impl` r),
-      AddPremise p,
-      AddPremise $ Not r,
-      ApplyRule (q `Impl` r) $ ImplE 2 1,
-      IntrAsump q,
-      ApplyRule r $ ImplE 5 4,
-      ApplyRule Bottom $ BotI 6 3,
-      ElimAsump Bottom,
-      ApplyRule (Not q) $ NegI 8
-    ]
+    $ do
+      addPremise $ p `Impl` (q `Impl` r)
+      addPremise p
+      addPremise $ Not r
+      applyRule (q `Impl` r) $ implE 2 1
+      intrAsump q
+      applyRule r $ implE 5 4
+      applyRule Bottom $ botI 6 3
+      elimAsump Bottom
+      applyRule (Not q) $ negI 8
 
 eg8a =
   test
     "Example 1.8 (part a)"
-    [ AddPremise $ Not p `Impl` q,
-      AddPremise $ Not q,
-      IntrAsump $ Not p,
-      ApplyRule q $ ImplE 3 1,
-      ApplyRule Bottom $ BotI 4 2,
-      ElimAsump Bottom,
-      ApplyRule (nn p) $ NegI 6,
-      ApplyRule p $ NegNegE 7
-    ]
+    $ do
+      addPremise $ Not p `Impl` q
+      addPremise $ Not q
+      intrAsump $ Not p
+      applyRule q $ implE 3 1
+      applyRule Bottom $ botI 4 2
+      elimAsump Bottom
+      applyRule (nn p) $ negI 6
+      applyRule p $ negnegE 7
 
 eg8b =
   test
     "Example 1.8 (part b)"
-    [ AddPremise $ p `Impl` Not q,
-      AddPremise q,
-      ApplyRule (nn q) $ NegNegI 2,
-      IntrAsump p,
-      ApplyRule (Not q) $ ImplE 4 1,
-      ApplyRule Bottom $ BotI 2 5,
-      ElimAsump Bottom,
-      ApplyRule (Not p) $ NegI 7
-    ]
+    $ do
+      addPremise $ p `Impl` Not q
+      addPremise q
+      applyRule (nn q) $ negnegI 2
+      intrAsump p
+      applyRule (Not q) $ implE 4 1
+      applyRule Bottom $ botI 2 5
+      elimAsump Bottom
+      applyRule (Not p) $ negI 7
 
 eg9 =
   test
     "Example 1.9"
-    [ AddPremise $ Not q `Impl` Not p,
-      IntrAsump p,
-      IntrAsump $ Not q,
-      ApplyRule (Not p) $ ImplE 3 1,
-      ApplyRule Bottom $ BotI 2 4,
-      ElimAsump Bottom,
-      ApplyRule (nn q) $ NegI 6,
-      ElimAsump $ nn q
-    ]
+    $ do
+      addPremise $ Not q `Impl` Not p
+      intrAsump p
+      intrAsump $ Not q
+      applyRule (Not p) $ implE 3 1
+      applyRule Bottom $ botI 2 4
+      elimAsump Bottom
+      applyRule (nn q) $ negI 6
+      elimAsump $ nn q
 
-egOneline = test "Identity Law" [IntrAsump p, ElimAsump p]
+egOneline = test "Identity Law" $ do intrAsump p; elimAsump p
 
 eg11 =
   test
     "Example 1.11"
-    [ IntrAsump $ q `Impl` r,
-      IntrAsump $ Not q `Impl` Not p,
-      IntrAsump p,
-      IntrAsump $ Not q,
-      ApplyRule (Not p) $ ImplE 4 2,
-      ApplyRule Bottom $ BotI 3 5,
-      ElimAsump Bottom,
-      ApplyRule (nn q) $ NegI 7,
-      ApplyRule q $ NegNegE 8,
-      ApplyRule r $ ImplE 9 1,
-      ElimAsump r,
-      ElimAsump $ p `Impl` r,
-      ElimAsump $ (Not q `Impl` Not p) `Impl` (p `Impl` r)
-    ]
+    $ do
+      intrAsump $ q `Impl` r
+      intrAsump $ Not q `Impl` Not p
+      intrAsump p
+      intrAsump $ Not q
+      applyRule (Not p) $ implE 4 2
+      applyRule Bottom $ botI 3 5
+      elimAsump Bottom
+      applyRule (nn q) $ negI 7
+      applyRule q $ negnegE 8
+      applyRule r $ implE 9 1
+      elimAsump r
+      elimAsump $ p `Impl` r
+      elimAsump $ (Not q `Impl` Not p) `Impl` (p `Impl` r)
 
 eg13 =
   test
     "Example 1.13"
-    [ AddPremise $ (p `And` q) `Impl` r,
-      IntrAsump p,
-      IntrAsump q,
-      ApplyRule (p `And` q) $ ConjI 2 3,
-      ApplyRule r $ ImplE 4 1,
-      ElimAsump r,
-      ElimAsump $ q `Impl` r
-    ]
+    $ do
+      addPremise $ (p `And` q) `Impl` r
+      intrAsump p
+      intrAsump q
+      applyRule (p `And` q) $ conjI 2 3
+      applyRule r $ implE 4 1
+      elimAsump r
+      elimAsump $ q `Impl` r
 
 eg14 =
   test
     "Example 1.14"
-    [ AddPremise $ p `Impl` (q `Impl` r),
-      IntrAsump $ p `And` q,
-      ApplyRule p $ ConjE 2,
-      ApplyRule q $ ConjE 2,
-      ApplyRule (q `Impl` r) $ ImplE 3 1,
-      ApplyRule r $ ImplE 4 5,
-      ElimAsump r
-    ]
+    $ do
+      addPremise $ p `Impl` (q `Impl` r)
+      intrAsump $ p `And` q
+      applyRule p $ conjE 2
+      applyRule q $ conjE 2
+      applyRule (q `Impl` r) $ implE 3 1
+      applyRule r $ implE 4 5
+      elimAsump r
 
 eg15 =
   test
     "Example 1.15"
-    [ AddPremise $ p `Impl` q,
-      IntrAsump $ p `And` r,
-      ApplyRule p $ ConjE 2,
-      ApplyRule r $ ConjE 2,
-      ApplyRule q $ ImplE 3 1,
-      ApplyRule (q `And` r) $ ConjI 5 4,
-      ElimAsump $ q `And` r
-    ]
+    $ do
+      addPremise $ p `Impl` q
+      intrAsump $ p `And` r
+      applyRule p $ conjE 2
+      applyRule r $ conjE 2
+      applyRule q $ implE 3 1
+      applyRule (q `And` r) $ conjI 5 4
+      elimAsump $ q `And` r
 
 eg16 =
   test
     "Example 1.16"
-    [ AddPremise $ q `Impl` r,
-      IntrAsump $ p `Or` q,
-      IntrAsump p,
-      ApplyRule (p `Or` r) $ DisjI 3,
-      ElimAsump $ p `Or` r,
-      IntrAsump q,
-      ApplyRule r $ ImplE 6 1,
-      ApplyRule (p `Or` r) $ DisjI 7,
-      ElimAsump $ p `Or` r,
-      ApplyRule (p `Or` r) $ DisjE 2 5 9,
-      ElimAsump $ p `Or` r
-    ]
+    $ do
+      addPremise $ q `Impl` r
+      intrAsump $ p `Or` q
+      intrAsump p
+      applyRule (p `Or` r) $ disjI 3
+      elimAsump $ p `Or` r
+      intrAsump q
+      applyRule r $ implE 6 1
+      applyRule (p `Or` r) $ disjI 7
+      elimAsump $ p `Or` r
+      applyRule (p `Or` r) $ disjE 2 5 9
+      elimAsump $ p `Or` r
 
 eg17 =
   test
     "Example 1.17"
-    [ AddPremise $ (p `Or` q) `Or` r,
-      IntrAsump $ p `Or` q,
-      IntrAsump p,
-      ApplyRule (p `Or` (q `Or` r)) $ DisjI 3,
-      ElimAsump $ p `Or` (q `Or` r),
-      IntrAsump q,
-      ApplyRule (q `Or` r) $ DisjI 6,
-      ApplyRule (p `Or` (q `Or` r)) $ DisjI 7,
-      ElimAsump $ p `Or` (q `Or` r),
-      ApplyRule (p `Or` (q `Or` r)) $ DisjE 2 5 9,
-      ElimAsump $ p `Or` (q `Or` r),
-      IntrAsump r,
-      ApplyRule (q `Or` r) $ DisjI 12,
-      ApplyRule (p `Or` (q `Or` r)) $ DisjI 13,
-      ElimAsump $ p `Or` (q `Or` r),
-      ApplyRule (p `Or` (q `Or` r)) $ DisjE 1 11 15
-    ]
+    $ do
+      addPremise $ (p `Or` q) `Or` r
+      intrAsump $ p `Or` q
+      intrAsump p
+      applyRule (p `Or` (q `Or` r)) $ disjI 3
+      elimAsump $ p `Or` (q `Or` r)
+      intrAsump q
+      applyRule (q `Or` r) $ disjI 6
+      applyRule (p `Or` (q `Or` r)) $ disjI 7
+      elimAsump $ p `Or` (q `Or` r)
+      applyRule (p `Or` (q `Or` r)) $ disjE 2 5 9
+      elimAsump $ p `Or` (q `Or` r)
+      intrAsump r
+      applyRule (q `Or` r) $ disjI 12
+      applyRule (p `Or` (q `Or` r)) $ disjI 13
+      elimAsump $ p `Or` (q `Or` r)
+      applyRule (p `Or` (q `Or` r)) $ disjE 1 11 15
 
 eg18 =
   test
     "Example 1.18"
-    [ AddPremise $ p `And` (q `Or` r),
-      ApplyRule p $ ConjE 1,
-      ApplyRule (q `Or` r) $ ConjE 1,
-      IntrAsump q,
-      ApplyRule (p `And` q) $ ConjI 2 4,
-      ApplyRule ((p `And` q) `Or` (p `And` r)) $ DisjI 5,
-      ElimAsump $ (p `And` q) `Or` (p `And` r),
-      IntrAsump r,
-      ApplyRule (p `And` r) $ ConjI 2 8,
-      ApplyRule ((p `And` q) `Or` (p `And` r)) $ DisjI 9,
-      ElimAsump $ (p `And` q) `Or` (p `And` r),
-      ApplyRule ((p `And` q) `Or` (p `And` r)) $ DisjE 3 7 11
-    ]
+    $ do
+      addPremise $ p `And` (q `Or` r)
+      applyRule p $ conjE 1
+      applyRule (q `Or` r) $ conjE 1
+      intrAsump q
+      applyRule (p `And` q) $ conjI 2 4
+      applyRule ((p `And` q) `Or` (p `And` r)) $ disjI 5
+      elimAsump $ (p `And` q) `Or` (p `And` r)
+      intrAsump r
+      applyRule (p `And` r) $ conjI 2 8
+      applyRule ((p `And` q) `Or` (p `And` r)) $ disjI 9
+      elimAsump $ (p `And` q) `Or` (p `And` r)
+      applyRule ((p `And` q) `Or` (p `And` r)) $ disjE 3 7 11
 
 egcopy =
   test
     "Example copy"
-    [ IntrAsump p,
-      IntrAsump q,
-      ElimAsump p,
-      ElimAsump $ q `Impl` p
-    ]
+    $ do
+      intrAsump p
+      intrAsump q
+      elimAsump p
+      elimAsump $ q `Impl` p
 
 eg20 =
   test
     "Example 1.20"
-    [ AddPremise $ Not p `Or` q,
-      IntrAsump $ Not p,
-      IntrAsump p,
-      ApplyRule Bottom $ BotI 3 2,
-      ApplyRule q $ BotE 4,
-      ElimAsump q,
-      ElimAsump $ p `Impl` q,
-      IntrAsump q,
-      IntrAsump p,
-      ElimAsump q,
-      ElimAsump $ p `Impl` q,
-      ApplyRule (p `Impl` q) $ DisjE 1 7 11
-    ]
+    $ do
+      addPremise $ Not p `Or` q
+      intrAsump $ Not p
+      intrAsump p
+      applyRule Bottom $ botI 3 2
+      applyRule q $ botE 4
+      elimAsump q
+      elimAsump $ p `Impl` q
+      intrAsump q
+      intrAsump p
+      elimAsump q
+      elimAsump $ p `Impl` q
+      applyRule (p `Impl` q) $ disjE 1 7 11
 
 eg21 =
   test
     "Example 1.21"
-    [ AddPremise $ p `Impl` q,
-      AddPremise $ p `Impl` Not q,
-      IntrAsump p,
-      ApplyRule q $ ImplE 3 1,
-      ApplyRule (Not q) $ ImplE 3 2,
-      ApplyRule Bottom $ BotI 4 5,
-      ElimAsump Bottom,
-      ApplyRule (Not p) $ NegI 7
-    ]
+    $ do
+      addPremise $ p `Impl` q
+      addPremise $ p `Impl` Not q
+      intrAsump p
+      applyRule q $ implE 3 1
+      applyRule (Not q) $ implE 3 2
+      applyRule Bottom $ botI 4 5
+      elimAsump Bottom
+      applyRule (Not p) $ negI 7
 
 egcontradict =
   test
     "Example Contradicting Implication"
-    [ AddPremise $ p `Impl` Not p,
-      IntrAsump p,
-      ApplyRule (Not p) $ ImplE 2 1,
-      ApplyRule Bottom $ BotI 2 3,
-      ElimAsump Bottom,
-      ApplyRule (Not p) $ NegI 5
-    ]
+    $ do
+      addPremise $ p `Impl` Not p
+      intrAsump p
+      applyRule (Not p) $ implE 2 1
+      applyRule Bottom $ botI 2 3
+      elimAsump Bottom
+      applyRule (Not p) $ negI 5
 
 eg22 =
   test
     "Example 1.22"
-    [ AddPremise $ p `Impl` (q `Impl` r),
-      AddPremise p,
-      AddPremise $ Not r,
-      ApplyRule (q `Impl` r) $ ImplE 2 1,
-      IntrAsump q,
-      ApplyRule r $ ImplE 5 4,
-      ApplyRule Bottom $ BotI 6 3,
-      ElimAsump Bottom,
-      ApplyRule (Not q) $ NegI 8
-    ]
+    $ do
+      addPremise $ p `Impl` (q `Impl` r)
+      addPremise p
+      addPremise $ Not r
+      applyRule (q `Impl` r) $ implE 2 1
+      intrAsump q
+      applyRule r $ implE 5 4
+      applyRule Bottom $ botI 6 3
+      elimAsump Bottom
+      applyRule (Not q) $ negI 8
 
 eg23 =
   test
     "Example 1.23"
-    [ AddPremise $ (p `And` Not q) `Impl` r,
-      AddPremise $ Not r,
-      AddPremise p,
-      IntrAsump $ Not q,
-      ApplyRule (p `And` Not q) $ ConjI 3 4,
-      ApplyRule r $ ImplE 5 1,
-      ApplyRule Bottom $ BotI 6 2,
-      ElimAsump Bottom,
-      ApplyRule (nn q) $ NegI 8,
-      ApplyRule q $ NegNegE 9
-    ]
+    $ do
+      addPremise $ (p `And` Not q) `Impl` r
+      addPremise $ Not r
+      addPremise p
+      intrAsump $ Not q
+      applyRule (p `And` Not q) $ conjI 3 4
+      applyRule r $ implE 5 1
+      applyRule Bottom $ botI 6 2
+      elimAsump Bottom
+      applyRule (nn q) $ negI 8
+      applyRule q $ negnegE 9
 
 egLEM =
   test
     "Example Excluded Middle"
-    [ IntrAsump $ Not (p `Or` Not p),
-      IntrAsump p,
-      ApplyRule (p `Or` Not p) $ DisjI 2,
-      ApplyRule Bottom $ BotI 3 1,
-      ElimAsump Bottom,
-      ApplyRule (Not p) $ NegI 5,
-      ApplyRule (p `Or` Not p) $ DisjI 6,
-      ApplyRule Bottom $ BotI 7 1,
-      ElimAsump Bottom,
-      ApplyRule (nn (p `Or` Not p)) $ NegI 9,
-      ApplyRule (p `Or` Not p) $ NegNegE 10
-    ]
+    $ do
+      intrAsump $ Not (p `Or` Not p)
+      intrAsump p
+      applyRule (p `Or` Not p) $ disjI 2
+      applyRule Bottom $ botI 3 1
+      elimAsump Bottom
+      applyRule (Not p) $ negI 5
+      applyRule (p `Or` Not p) $ disjI 6
+      applyRule Bottom $ botI 7 1
+      elimAsump Bottom
+      applyRule (nn (p `Or` Not p)) $ negI 9
+      applyRule (p `Or` Not p) $ negnegE 10
 
 eg24 =
   test
     "Example 1.24"
-    [ AddPremise $ p `Impl` q,
-      IntrAsump $ Not (p `Or` Not p),
-      IntrAsump p,
-      ApplyRule (p `Or` Not p) $ DisjI 3,
-      ApplyRule Bottom $ BotI 4 2,
-      ElimAsump Bottom,
-      ApplyRule (Not p) $ NegI 6,
-      ApplyRule (p `Or` Not p) $ DisjI 7,
-      ApplyRule Bottom $ BotI 8 2,
-      ElimAsump Bottom,
-      ApplyRule (nn (p `Or` Not p)) $ NegI 10,
-      ApplyRule (p `Or` Not p) $ NegNegE 11,
-      IntrAsump p,
-      ApplyRule q $ ImplE 13 1,
-      ApplyRule (Not p `Or` q) $ DisjI 14,
-      ElimAsump (Not p `Or` q),
-      IntrAsump (Not p),
-      ApplyRule (Not p `Or` q) $ DisjI 17,
-      ElimAsump (Not p `Or` q),
-      ApplyRule (Not p `Or` q) $ DisjE 12 16 19
-    ]
+    $ do
+      addPremise $ p `Impl` q
+      intrAsump $ Not (p `Or` Not p)
+      intrAsump p
+      applyRule (p `Or` Not p) $ disjI 3
+      applyRule Bottom $ botI 4 2
+      elimAsump Bottom
+      applyRule (Not p) $ negI 6
+      applyRule (p `Or` Not p) $ disjI 7
+      applyRule Bottom $ botI 8 2
+      elimAsump Bottom
+      applyRule (nn (p `Or` Not p)) $ negI 10
+      applyRule (p `Or` Not p) $ negnegE 11
+      intrAsump p
+      applyRule q $ implE 13 1
+      applyRule (Not p `Or` q) $ disjI 14
+      elimAsump (Not p `Or` q)
+      intrAsump (Not p)
+      applyRule (Not p `Or` q) $ disjI 17
+      elimAsump (Not p `Or` q)
+      applyRule (Not p `Or` q) $ disjE 12 16 19
 
 -- examples
 examples = [eg4, eg5, eg6, eg7, eg8a, eg8b, eg9, egOneline, eg11, eg13, eg14, eg15, eg16, eg17, eg18, egcopy, eg20, eg21, egcontradict, eg22, eg23, egLEM, eg24]
@@ -363,9 +364,9 @@ checkPF proof =
 main :: IO ()
 main = do
   runTests
-    [ test "syntax-wrong-1" [IntrAsump p],
-      test "syntax-wrong-2" [ElimAsump p],
-      test "syntax-wrong-3" [ApplyRule p (BotE 1), AddPremise p]
+    [ test "syntax-wrong-1" $ do intrAsump p,
+      test "syntax-wrong-2" $ do elimAsump p,
+      test "syntax-wrong-3" $ do applyRule p $ botE 1; addPremise p
     ]
 
   putStrLn "## BEGIN Examples ##"
