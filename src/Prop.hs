@@ -27,10 +27,13 @@ instance Show Prop where
   show (p `Or` q) = "(" ++ show p ++ "∨" ++ show q ++ ")"
   show (p `Impl` q) = "(" ++ show p ++ "→" ++ show q ++ ")"
 
-eval :: Prop -> Assignment -> Bool
-eval Bottom _ = False
-eval (Atom i) v = v i
-eval (Not p) v = not $ eval p v
-eval (p `And` q) v = eval p v && eval q v
-eval (p `Or` q) v = eval p v || eval q v
-eval (p `Impl` q) v = not (eval p v) || eval q v
+eval :: Assignment -> Prop -> Bool
+eval v prop = case prop of
+  Bottom -> False
+  Atom i -> v i
+  Not p -> not $ e p
+  p `And` q -> e p && e q
+  p `Or` q -> e p || e q
+  p `Impl` q -> not (e p) || e q
+  where
+    e = eval v
